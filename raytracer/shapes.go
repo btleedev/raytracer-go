@@ -6,9 +6,9 @@ import (
 )
 
 type hitRecord struct {
-	t float64
-	p r3.Vec
-	normal r3.Vec
+	t        float64
+	p        r3.Vec
+	normal   r3.Vec
 	material *material
 }
 
@@ -19,40 +19,40 @@ type shape interface {
 type sphere struct {
 	center r3.Vec
 	radius float64
-	mat material
+	mat    material
 }
 
 type triangle struct {
-	pointA r3.Vec
-	pointB r3.Vec
-	pointC r3.Vec
+	pointA      r3.Vec
+	pointB      r3.Vec
+	pointC      r3.Vec
 	singleSided bool
-	mat material
+	mat         material
 }
 
 func (s sphere) hit(r *ray, tMin float64) hitRecord {
 	oc := r3.Sub(r.p, s.center)
 	a := r3.Dot(r.direction, r.direction)
 	b := r3.Dot(oc, r.direction)
-	c := r3.Dot(oc, oc) - s.radius * s.radius
-	discriminant := b * b - a * c
+	c := r3.Dot(oc, oc) - s.radius*s.radius
+	discriminant := b*b - a*c
 	if discriminant > 0 {
-		firstPoint := (-b - math.Sqrt(b * b - a * c)) / a
+		firstPoint := (-b - math.Sqrt(b*b-a*c)) / a
 		if firstPoint > tMin {
 			return hitRecord{
-				t:      	firstPoint,
-				p:      	r.PointAtT(firstPoint),
-				normal: 	r3.Scale(1 / s.radius, r3.Sub(r.PointAtT(firstPoint), s.center)),
-				material:	&s.mat,
+				t:        firstPoint,
+				p:        r.PointAtT(firstPoint),
+				normal:   r3.Scale(1/s.radius, r3.Sub(r.PointAtT(firstPoint), s.center)),
+				material: &s.mat,
 			}
 		}
-		secondPoint := (-b - math.Sqrt(b * b - a * c)) / a
+		secondPoint := (-b - math.Sqrt(b*b-a*c)) / a
 		if secondPoint > tMin {
 			return hitRecord{
-				t:      	secondPoint,
-				p:      	r.PointAtT(secondPoint),
-				normal: 	r3.Scale(1 / s.radius, r3.Sub(r.PointAtT(secondPoint), s.center)),
-				material: 	&s.mat,
+				t:        secondPoint,
+				p:        r.PointAtT(secondPoint),
+				normal:   r3.Scale(1/s.radius, r3.Sub(r.PointAtT(secondPoint), s.center)),
+				material: &s.mat,
 			}
 		}
 	}
@@ -70,11 +70,11 @@ func (tr triangle) hit(r *ray, tMin float64) hitRecord {
 	// check if ray and plane are parallel
 	nDotRayDirection := r3.Dot(normal, r.direction)
 	if math.Abs(nDotRayDirection) < 0.00001 {
-		return hitRecord{ t: -1 }
+		return hitRecord{t: -1}
 	}
 	// check for backward facing triangle
 	if tr.singleSided && r3.Dot(r.direction, normal) > 0 {
-		return hitRecord{ t: -1 }
+		return hitRecord{t: -1}
 	}
 
 	// compute d parameter in plane equation
@@ -84,7 +84,7 @@ func (tr triangle) hit(r *ray, tMin float64) hitRecord {
 	t := (d - r3.Dot(normal, r.p)) / nDotRayDirection
 	// check if the triangle is in behind the ray
 	if t < tMin {
-		return hitRecord{ t: -1 }
+		return hitRecord{t: -1}
 	}
 
 	// compute the intersection point using ray equation
@@ -98,7 +98,7 @@ func (tr triangle) hit(r *ray, tMin float64) hitRecord {
 	vp0 := r3.Sub(p, tr.pointA)
 	c = r3.Cross(edge0, vp0)
 	if r3.Dot(normal, c) < 0 {
-		return hitRecord{ t: -1 } // p is on the right side
+		return hitRecord{t: -1} // p is on the right side
 	}
 
 	// edge 1
@@ -106,7 +106,7 @@ func (tr triangle) hit(r *ray, tMin float64) hitRecord {
 	vp1 := r3.Sub(p, tr.pointB)
 	c = r3.Cross(edge1, vp1)
 	if r3.Dot(normal, c) < 0 {
-		return hitRecord{ t: -1 } // p is on the right side
+		return hitRecord{t: -1} // p is on the right side
 	}
 
 	// edge 2
@@ -114,7 +114,7 @@ func (tr triangle) hit(r *ray, tMin float64) hitRecord {
 	vp2 := r3.Sub(p, tr.pointC)
 	c = r3.Cross(edge2, vp2)
 	if r3.Dot(normal, c) < 0 {
-		return hitRecord{ t: -1 } // p is on the right side
+		return hitRecord{t: -1} // p is on the right side
 	}
 
 	return hitRecord{

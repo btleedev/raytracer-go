@@ -1,9 +1,9 @@
 package main
 
 import (
-    "example.com/hello/raytracer"
+	"example.com/hello/raytracer"
 )
 
 func main() {
-    raytracer.GenerateImage()
+	raytracer.GenerateImage()
 }

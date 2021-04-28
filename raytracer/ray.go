@@ -6,7 +6,7 @@ import (
 )
 
 type ray struct {
-	p r3.Vec
+	p         r3.Vec
 	direction r3.Vec
 }
 

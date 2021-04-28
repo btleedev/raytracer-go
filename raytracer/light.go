@@ -14,21 +14,21 @@ type light interface {
 }
 
 type ambientLight struct {
-	colorFrac r3.Vec
+	colorFrac      r3.Vec
 	lightIntensity float64
 }
 
 type pointLight struct {
-	colorFrac r3.Vec
-	position r3.Vec
+	colorFrac      r3.Vec
+	position       r3.Vec
 	lightIntensity float64
 }
 
 type spotLight struct {
-	colorFrac r3.Vec
-	position r3.Vec
+	colorFrac      r3.Vec
+	position       r3.Vec
 	lightIntensity float64
-	direction r3.Vec
+	direction      r3.Vec
 	// specified in degrees
 	angle float64
 }
@@ -69,7 +69,7 @@ func (p pointLight) getLightIntensity() float64 {
 	return p.lightIntensity
 }
 
-func (p pointLight) isPointVisible(point *r3.Vec, shapes *[]shape, monteCarloVariance *r3.Vec) bool{
+func (p pointLight) isPointVisible(point *r3.Vec, shapes *[]shape, monteCarloVariance *r3.Vec) bool {
 	shiftedPosition := r3.Add(p.position, *monteCarloVariance)
 	return doesReachLight(point, &shiftedPosition, shapes)
 }
@@ -114,7 +114,7 @@ func doesReachLight(origin *r3.Vec, lightPosition *r3.Vec, shapes *[]shape) bool
 	unitLightDirection := r3.Unit(lightDirection)
 	hit, hitRecord := trace(
 		&ray{
-			p: *origin,
+			p:         *origin,
 			direction: unitLightDirection,
 		},
 		shapes,
