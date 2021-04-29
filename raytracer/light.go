@@ -49,7 +49,7 @@ func (a ambientLight) getLightIntensity() float64 {
 	return a.lightIntensity
 }
 
-func (a ambientLight) isPointVisible(point *r3.Vec, shapes *[]shape) bool {
+func (a ambientLight) isPointVisible(point *r3.Vec, shapes *[]shape, monteCarloVariance *r3.Vec) bool {
 	return true
 }
 

@@ -5,12 +5,20 @@ import (
 	"gonum.org/v1/gonum/spatial/r3"
 	"image"
 	"image/png"
-	"math"
 	"math/rand"
 	"os"
 )
 
-type scene struct {
+const antiAliasingFactor = 1
+const raytracingMaxDepth = 1
+const cameraAperature = 0.0
+const cameraFovDegrees = 60
+const imageWidth = 200  // 3840
+const imageHeight = 100 // 2160
+const softShadowMonteCarloRepetitions = 1
+const softShadowMonteCarloMaxLengthDeviation = 0.25
+
+type imageSpec struct {
 	width              int
 	height             int
 	antiAliasingFactor int
@@ -27,74 +35,22 @@ type raytraceResult struct {
 }
 
 func GenerateImage() {
-	scene := scene{
-		3840,
-		2160,
-		//600,
-		//400,
-		100,
+	imageSpec := imageSpec{
+		imageWidth,
+		imageHeight,
+		antiAliasingFactor,
 	}
-	lookFrom := r3.Vec{X: 3, Y: 1.5, Z: 1.75}
-	lookAt := r3.Vec{X: 0, Y: 1, Z: 0}
-	lookFromMinusLookAt := r3.Sub(lookFrom, lookAt)
-	camera := NewCamera(
-		lookFrom,
-		lookAt,
-		r3.Vec{X: 0, Y: 1, Z: 0},
-		60,
-		float64(scene.width)/float64(scene.height),
-		0.0,
-		math.Sqrt(lookFromMinusLookAt.X*lookFromMinusLookAt.X+lookFromMinusLookAt.Y*lookFromMinusLookAt.Y+lookFromMinusLookAt.Z*lookFromMinusLookAt.Z),
-	)
-	shapes := originalShapes()
-	lights := []light{
-		//ambientLight{
-		//	colorFrac: r3.Vec{
-		//		X: 0 / 255.0,
-		//		Y: 100 / 255.0,
-		//		Z: 125 / 255.0,
-		//	},
-		//	lightIntensity: 0.5,
-		//},
-		//pointLight{
-		//	colorFrac: r3.Vec{
-		//		X: 255 / 255.0,
-		//		Y: 255 / 255.0,
-		//		Z: 255 / 255.0,
-		//	},
-		//	lightIntensity: 1.0,
-		//	position: r3.Vec{
-		//		X: 1,
-		//		Y: 2,
-		//		Z: -2,
-		//	},
-		//},
-		spotLight{
-			colorFrac: r3.Vec{
-				X: 255 / 255.0,
-				Y: 255 / 255.0,
-				Z: 255 / 255.0,
-			},
-			lightIntensity: 1.0,
-			position: r3.Vec{
-				X: 0,
-				Y: 3,
-				Z: 0,
-			},
-			direction: r3.Sub(r3.Vec{X: 0, Y: 0, Z: 0}, r3.Vec{X: 0, Y: 3, Z: 0}),
-			angle:     40,
-		},
-	}
-	myImage := image.NewRGBA(image.Rect(0, 0, scene.width, scene.height))
-	jobs := make(chan raytraceJob, scene.height*scene.width)
-	results := make(chan raytraceResult, scene.height*scene.width)
+	theScene := koala(imageSpec)
+	myImage := image.NewRGBA(image.Rect(0, 0, imageSpec.width, imageSpec.height))
+	jobs := make(chan raytraceJob, imageSpec.height*imageSpec.width)
+	results := make(chan raytraceResult, imageSpec.height*imageSpec.width)
 	workers := 16
 	for i := 0; i < workers; i++ {
-		go computePixel(i, &scene, &camera, &shapes, &lights, jobs, results)
+		go computePixel(i, &imageSpec, theScene.camera, theScene.shapes, theScene.lights, jobs, results)
 	}
 
-	for j := scene.height - 1; j >= 0; j-- {
-		for i := 0; i < scene.width; i++ {
+	for j := imageSpec.height - 1; j >= 0; j-- {
+		for i := 0; i < imageSpec.width; i++ {
 			jobs <- raytraceJob{
 				i: i,
 				j: j,
@@ -104,8 +60,8 @@ func GenerateImage() {
 	close(jobs)
 
 	count := 0
-	for j := scene.height - 1; j >= 0; j-- {
-		for i := 0; i < scene.width; i++ {
+	for j := imageSpec.height - 1; j >= 0; j-- {
+		for i := 0; i < imageSpec.width; i++ {
 			result := <-results
 			myImage.Pix[result.pixelIdx+0] = uint8(result.pixelColorFrac.X * 255.99) // 1st pixel red
 			myImage.Pix[result.pixelIdx+1] = uint8(result.pixelColorFrac.Y * 255.99) // 1st pixel green
@@ -114,12 +70,12 @@ func GenerateImage() {
 
 			count++
 			if count%10000 == 0 {
-				fmt.Printf("%v%% done\n", float64(count)/float64(scene.height*scene.width)*100.0)
+				fmt.Printf("%.2f%% pixels rendered\n", float64(count)/float64(imageSpec.height*imageSpec.width)*100.0)
 			}
 		}
 	}
 
-	outputFile, err := os.Create("test.png")
+	outputFile, err := os.Create("out.png")
 	if err != nil {
 		panic("failed to create image")
 	}
@@ -127,7 +83,7 @@ func GenerateImage() {
 	png.Encode(outputFile, myImage)
 }
 
-func computePixel(id int, scene *scene, camera *camera, shapes *[]shape, lights *[]light, jobs <-chan raytraceJob, results chan<- raytraceResult) {
+func computePixel(id int, scene *imageSpec, camera *camera, shapes *[]shape, lights *[]light, jobs <-chan raytraceJob, results chan<- raytraceResult) {
 	for job := range jobs {
 		pixelColor := r3.Vec{}
 		for s := 0; s < scene.antiAliasingFactor; s++ {
@@ -138,9 +94,9 @@ func computePixel(id int, scene *scene, camera *camera, shapes *[]shape, lights 
 		}
 		pixelColor = r3.Scale(1.0/float64(scene.antiAliasingFactor), pixelColor)
 		pixelColor = r3.Vec{
-			X: math.Sqrt(pixelColor.X),
-			Y: math.Sqrt(pixelColor.Y),
-			Z: math.Sqrt(pixelColor.Z),
+			X: pixelColor.X,
+			Y: pixelColor.Y,
+			Z: pixelColor.Z,
 		}
 		pixelIdx := (((scene.height - 1 - job.j) * scene.width) + job.i) * 4
 
@@ -155,7 +111,7 @@ func computePixel(id int, scene *scene, camera *camera, shapes *[]shape, lights 
 func color(r *ray, shapes *[]shape, lights *[]light, depth int) r3.Vec {
 	var hit, minHitRecord = trace(r, shapes, 0.0)
 	if hit {
-		if depth < 64 {
+		if depth < raytracingMaxDepth {
 			shouldTrace, attenuation, scattered, terminalColor := (*minHitRecord.material).scatter(r, minHitRecord, shapes, lights)
 			if shouldTrace {
 				recColor := color(&scattered, shapes, lights, depth+1)
@@ -175,215 +131,5 @@ func color(r *ray, shapes *[]shape, lights *[]light, depth int) r3.Vec {
 		X: 0 / 255.0,
 		Y: 0 / 255.0,
 		Z: 0 / 255.0,
-	}
-}
-
-func randomShapes() []shape {
-	n := 22*22 + 1 + 3
-	shapes := make([]shape, n)
-	shapes[0] = sphere{
-		center: r3.Vec{X: 0, Y: -1000, Z: -1},
-		radius: 1000,
-		mat:    diffuse{albedo: r3.Vec{X: 0.5, Y: 0.5, Z: 0.5}},
-	}
-	i := 1
-	for a := -11; a < 11; a++ {
-		for b := -11; b < 11; b++ {
-			center := r3.Vec{}
-			for {
-				center = r3.Vec{X: float64(a) + 0.9*rand.Float64(), Y: 0.2, Z: float64(b) + 0.9*rand.Float64()}
-				centerMinusCenterBalls := r3.Sub(center, r3.Vec{X: 4, Y: 0.2, Z: 0})
-				if centerMinusCenterBalls.X*centerMinusCenterBalls.X+centerMinusCenterBalls.Y*centerMinusCenterBalls.Y+centerMinusCenterBalls.Z*centerMinusCenterBalls.Z > 0.9 {
-					break
-				}
-			}
-			chooseMat := rand.Float64()
-			if chooseMat < 0.8 {
-				shapes[i] = sphere{
-					center: center,
-					radius: 0.2,
-					mat: diffuse{albedo: r3.Vec{
-						X: rand.Float64() * rand.Float64(),
-						Y: rand.Float64() * rand.Float64(),
-						Z: rand.Float64() * rand.Float64(),
-					}},
-				}
-			} else if chooseMat < 0.95 {
-				shapes[i] = sphere{
-					center: center,
-					radius: 0.2,
-					mat: metal{
-						albedo: r3.Vec{
-							X: 0.5 * (1 + rand.Float64()),
-							Y: 0.5 * (1 + rand.Float64()),
-							Z: 0.5 * (1 + rand.Float64()),
-						},
-						fuzz: 0.5 * rand.Float64(),
-					},
-				}
-			} else {
-				shapes[i] = sphere{
-					center: center,
-					radius: 0.2,
-					mat:    dielectric{refractiveIndex: 1.5},
-				}
-			}
-			i++
-		}
-	}
-
-	shapes[i] = sphere{
-		center: r3.Vec{
-			X: 0,
-			Y: 1,
-			Z: 0,
-		},
-		radius: 1,
-		mat: dielectric{
-			refractiveIndex: 1.5,
-		},
-	}
-	i++
-
-	shapes[i] = sphere{
-		center: r3.Vec{
-			X: -4,
-			Y: 1,
-			Z: 0,
-		},
-		radius: 1,
-		mat: diffuse{albedo: r3.Vec{
-			X: 0.4,
-			Y: 0.2,
-			Z: 0.1,
-		}},
-	}
-	i++
-
-	shapes[i] = sphere{
-		center: r3.Vec{
-			X: 4,
-			Y: 1,
-			Z: 0,
-		},
-		radius: 1,
-		mat: metal{
-			albedo: r3.Vec{
-				X: 0.7,
-				Y: 0.6,
-				Z: 0.5,
-			},
-			fuzz: 0.0,
-		},
-	}
-	return shapes
-}
-
-func originalShapes() []shape {
-	return []shape{
-
-		triangle{
-			pointA:      r3.Vec{X: 10000, Y: 0, Z: 10000},
-			pointB:      r3.Vec{X: 10000, Y: 0, Z: -10000},
-			pointC:      r3.Vec{X: -10000, Y: 0, Z: 10000},
-			singleSided: true,
-			mat: phongBlinn{
-				specValue:     0.0,
-				specShininess: 0.0,
-				color:         r3.Vec{X: 255.0 / 255.0, Y: 235.0 / 255.0, Z: 205.0 / 255.0},
-			},
-		},
-		triangle{
-			pointA:      r3.Vec{X: -10000, Y: 0, Z: -10000},
-			pointB:      r3.Vec{X: -10000, Y: 0, Z: 10000},
-			pointC:      r3.Vec{X: 10000, Y: 0, Z: -10000},
-			singleSided: true,
-			mat: phongBlinn{
-				specValue:     0.0,
-				specShininess: 0.0,
-				color:         r3.Vec{X: 255.0 / 255.0, Y: 235.0 / 255.0, Z: 205.0 / 255.0},
-			},
-		},
-		sphere{
-			center: r3.Vec{X: 0, Y: 0.5, Z: 0},
-			radius: 0.5,
-			// mat: diffuse{ albedo: r3.Vec{ X: 0.8, Y: 0.3, Z: 0.3 } },
-			mat: phongBlinn{
-				specValue:     5.0,
-				specShininess: 32.0,
-				color:         r3.Vec{X: 1, Y: 0, Z: 0},
-			},
-		},
-		sphere{
-			center: r3.Vec{X: 1, Y: 0.5, Z: 0},
-			radius: 0.5,
-			// mat: metal{ albedo: r3.Vec{ X: 0.8, Y: 0.6, Z: 0.2 } },
-			mat: metal{albedo: r3.Vec{X: 1, Y: 1, Z: 1}},
-		},
-		sphere{
-			center: r3.Vec{X: -1, Y: 0.5, Z: 0},
-			radius: 0.5,
-			mat:    dielectric{refractiveIndex: 2.417},
-		},
-		// back
-		triangle{
-			pointA:      r3.Vec{X: 3, Y: 3, Z: -3},
-			pointB:      r3.Vec{X: -3, Y: 3, Z: -3},
-			pointC:      r3.Vec{X: 3, Y: 0, Z: -3},
-			singleSided: true,
-			mat:         metal{albedo: r3.Vec{X: 1, Y: 1, Z: 1}},
-		},
-		triangle{
-			pointA:      r3.Vec{X: -3, Y: 0, Z: -3},
-			pointB:      r3.Vec{X: 3, Y: 0, Z: -3},
-			pointC:      r3.Vec{X: -3, Y: 3, Z: -3},
-			singleSided: true,
-			mat:         metal{albedo: r3.Vec{X: 1, Y: 1, Z: 1}},
-		},
-		// right
-		triangle{
-			pointA:      r3.Vec{X: 3, Y: 3, Z: 3},
-			pointB:      r3.Vec{X: 3, Y: 3, Z: -3},
-			pointC:      r3.Vec{X: 3, Y: 0, Z: 3},
-			singleSided: true,
-			mat:         metal{albedo: r3.Vec{X: 1, Y: 1, Z: 1}},
-		},
-		triangle{
-			pointA:      r3.Vec{X: 3, Y: 0, Z: -3},
-			pointB:      r3.Vec{X: 3, Y: 0, Z: 3},
-			pointC:      r3.Vec{X: 3, Y: 3, Z: -3},
-			singleSided: true,
-			mat:         metal{albedo: r3.Vec{X: 1, Y: 1, Z: 1}},
-		},
-		// left
-		triangle{
-			pointA:      r3.Vec{X: -3, Y: 3, Z: 3},
-			pointB:      r3.Vec{X: -3, Y: 0, Z: 3},
-			pointC:      r3.Vec{X: -3, Y: 3, Z: -3},
-			singleSided: true,
-			mat:         metal{albedo: r3.Vec{X: 1, Y: 1, Z: 1}},
-		},
-		triangle{
-			pointA:      r3.Vec{X: -3, Y: 0, Z: -3},
-			pointB:      r3.Vec{X: -3, Y: 3, Z: -3},
-			pointC:      r3.Vec{X: -3, Y: 0, Z: 3},
-			singleSided: true,
-			mat:         metal{albedo: r3.Vec{X: 1, Y: 1, Z: 1}},
-		},
-		// back
-		triangle{
-			pointA:      r3.Vec{X: 3, Y: 3, Z: 3},
-			pointB:      r3.Vec{X: 3, Y: 0, Z: 3},
-			pointC:      r3.Vec{X: -3, Y: 3, Z: 3},
-			singleSided: true,
-			mat:         metal{albedo: r3.Vec{X: 1, Y: 1, Z: 1}},
-		},
-		triangle{
-			pointA:      r3.Vec{X: -3, Y: 0, Z: 3},
-			pointB:      r3.Vec{X: -3, Y: 3, Z: 3},
-			pointC:      r3.Vec{X: 3, Y: 0, Z: 3},
-			singleSided: true,
-			mat:         metal{albedo: r3.Vec{X: 1, Y: 1, Z: 1}},
-		},
 	}
 }

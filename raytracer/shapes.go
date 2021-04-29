@@ -14,6 +14,10 @@ type hitRecord struct {
 
 type shape interface {
 	hit(r *ray, tMin float64) hitRecord
+	translate(tv r3.Vec)
+	scale(c float64)
+	// rotation vector is in degrees
+	rotate(rv r3.Vec)
 }
 
 type sphere struct {
@@ -59,6 +63,17 @@ func (s sphere) hit(r *ray, tMin float64) hitRecord {
 	return hitRecord{
 		t: -1,
 	}
+}
+
+func (s *sphere) translate(tv r3.Vec) {
+	s.center = r3.Add(tv, s.center)
+}
+
+func (s *sphere) scale(c float64) {
+	s.radius *= c
+}
+
+func (s *sphere) rotate(rv r3.Vec) {
 }
 
 func (tr triangle) hit(r *ray, tMin float64) hitRecord {
@@ -123,4 +138,47 @@ func (tr triangle) hit(r *ray, tMin float64) hitRecord {
 		normal:   normal,
 		material: &tr.mat,
 	}
+}
+
+func (t *triangle) translate(tv r3.Vec) {
+	t.pointA = r3.Add(tv, t.pointA)
+	t.pointB = r3.Add(tv, t.pointB)
+	t.pointC = r3.Add(tv, t.pointC)
+}
+
+func (t *triangle) scale(c float64) {
+	t.pointA = r3.Scale(c, t.pointA)
+	t.pointB = r3.Scale(c, t.pointB)
+	t.pointC = r3.Scale(c, t.pointC)
+}
+
+func (t *triangle) rotate(rv r3.Vec) {
+	t.pointA = rotatePoint(t.pointA, rv)
+	t.pointB = rotatePoint(t.pointB, rv)
+	t.pointC = rotatePoint(t.pointC, rv)
+}
+
+func rotatePoint(point r3.Vec, rv r3.Vec) r3.Vec {
+	piDivide180 := math.Pi / 180.0
+	rotatedPoint := point
+
+	// around z axis
+	x := rotatedPoint.X*math.Cos(piDivide180*rv.Z) - rotatedPoint.Y*math.Sin(piDivide180*rv.Z)
+	y := rotatedPoint.X*math.Sin(piDivide180*rv.Z) + rotatedPoint.Y*math.Cos(piDivide180*rv.Z)
+	rotatedPoint.X = x
+	rotatedPoint.Y = y
+
+	// around x axis
+	y = rotatedPoint.Y*math.Cos(piDivide180*rv.X) - rotatedPoint.Z*math.Sin(piDivide180*rv.X)
+	z := rotatedPoint.Y*math.Sin(piDivide180*rv.X) + rotatedPoint.Z*math.Cos(piDivide180*rv.X)
+	rotatedPoint.Y = y
+	rotatedPoint.Z = z
+
+	// around y axis
+	x = rotatedPoint.X*math.Cos(piDivide180*rv.Y) + rotatedPoint.Z*math.Sin(piDivide180*rv.Y)
+	z = -1*rotatedPoint.X*math.Sin(piDivide180*rv.Y) + rotatedPoint.Z*math.Cos(piDivide180*rv.Y)
+	rotatedPoint.X = x
+	rotatedPoint.Z = z
+
+	return rotatedPoint
 }

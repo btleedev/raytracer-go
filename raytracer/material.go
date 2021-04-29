@@ -80,8 +80,8 @@ func (p phongBlinn) scatter(r *ray, hitRecord *hitRecord, shapes *[]shape, light
 	c := r3.Vec{}
 	for _, light := range *lights {
 		if light.hasPosition() {
-			monteCarloRepetitions := 64
-			monteCarloMaxLength := 0.25
+			monteCarloRepetitions := softShadowMonteCarloRepetitions
+			monteCarloMaxLength := softShadowMonteCarloMaxLengthDeviation
 			for i := 0; i < monteCarloRepetitions; i++ {
 				hitPoint := hitRecord.p
 				monteCarloVariance := r3.Scale(monteCarloMaxLength, randomInUnitSphere())
@@ -101,7 +101,7 @@ func (p phongBlinn) scatter(r *ray, hitRecord *hitRecord, shapes *[]shape, light
 				}
 			}
 		} else {
-			// treat as ambient light
+			// treat as ambient light - no position so we assume it can reach us
 			c = r3.Add(c, r3.Scale(light.getLightIntensity(), light.getColorFrac()))
 		}
 	}
