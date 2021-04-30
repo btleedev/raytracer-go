@@ -9,13 +9,14 @@ import (
 	"os"
 )
 
-const antiAliasingFactor = 1
-const raytracingMaxDepth = 1
-const cameraAperature = 0.0
+const antiAliasingFactor = 32
+const boundingBoxMaxSize = 1000
+const raytracingMaxDepth = 16
+const cameraAperature = 0.015
 const cameraFovDegrees = 60
-const imageWidth = 200  // 3840
-const imageHeight = 100 // 2160
-const softShadowMonteCarloRepetitions = 1
+const imageWidth = 640  // 3840
+const imageHeight = 360 // 2160
+const softShadowMonteCarloRepetitions = 32
 const softShadowMonteCarloMaxLengthDeviation = 0.25
 
 type imageSpec struct {
@@ -40,7 +41,7 @@ func GenerateImage() {
 		imageHeight,
 		antiAliasingFactor,
 	}
-	theScene := koala(imageSpec)
+	theScene := tesla(imageSpec)
 	myImage := image.NewRGBA(image.Rect(0, 0, imageSpec.width, imageSpec.height))
 	jobs := make(chan raytraceJob, imageSpec.height*imageSpec.width)
 	results := make(chan raytraceResult, imageSpec.height*imageSpec.width)
@@ -69,7 +70,7 @@ func GenerateImage() {
 			myImage.Pix[result.pixelIdx+3] = 255                                     // 1st pixel alpha
 
 			count++
-			if count%10000 == 0 {
+			if count%1000 == 0 {
 				fmt.Printf("%.2f%% pixels rendered\n", float64(count)/float64(imageSpec.height*imageSpec.width)*100.0)
 			}
 		}

@@ -19,7 +19,7 @@ func trace(r *ray, shapes *[]shape, tMin float64) (hit bool, record *hitRecord) 
 		t: math.MaxFloat64,
 	}
 	for _, shape := range *shapes {
-		hitRecord := shape.hit(r, tMin)
+		hitRecord := shape.hit(r, tMin, minHitRecord.t)
 		if hitRecord.t > 0.0 && hitRecord.t < minHitRecord.t {
 			minHitRecord = hitRecord
 		}

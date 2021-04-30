@@ -22,6 +22,7 @@ Ray tracer written in golang.
 
 # Features
 
+* Acceleration structures (bounding volume)
 * Anti-Aliasing
 * Camera FOV
 * Camera Lens blur (aperature)
@@ -32,4 +33,4 @@ Ray tracer written in golang.
 ## STL Models used in samples
 
 * [LOW POLY STANFORD BUNNY](https://cults3d.com/en/3d-model/art/low-poly-stanford-bunny) - Author: Istareyn - LICENSE: https://creativecommons.org/licenses/by-nc/3.0/
-* [KOALA(KOALA'S MARCH)](https://cults3d.com/en/3d-model/art/koala-koala-s-march) - Author: PatrickFanart - LICENSE: https://creativecommons.org/licenses/by-nc-nd/3.0/
+* [BELLSPROUT WITH FLOWER POT](https://cults3d.com/en/3d-model/game/bellsprout-with-flower-pot) - Author: Philin_theBlank - LICENSE: https://creativecommons.org/licenses/by-nc-nd/3.0/
