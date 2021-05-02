@@ -7,12 +7,11 @@ import (
 )
 
 type material interface {
-	scatter(r *ray, hitRecord *hitRecord, shapes *[]shape, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec)
+	scatter(r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec)
 }
 
 type diffuse struct {
-	albedo r3.Vec
-	color  r3.Vec
+	color r3.Vec
 }
 
 type metal struct {
@@ -30,13 +29,11 @@ type phongBlinn struct {
 	color         r3.Vec
 }
 
-func (d diffuse) scatter(r *ray, hitRecord *hitRecord, shapes *[]shape, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
-	target := r3.Add(hitRecord.p, r3.Add(hitRecord.normal, randomInUnitSphere()))
-	// set shouldTrace = true to allow diffuse materials to scatter as well, turned off to compute shadows
-	return false, d.albedo, ray{p: hitRecord.p, direction: r3.Sub(target, hitRecord.p)}, d.color
+func (d diffuse) scatter(r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
+	return false, r3.Vec{}, ray{p: hitRecord.p, direction: r3.Vec{}}, d.color
 }
 
-func (m metal) scatter(r *ray, hitRecord *hitRecord, shapes *[]shape, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
+func (m metal) scatter(r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
 	correctedFuzz := 1.0
 	if m.fuzz < 1.0 {
 		correctedFuzz = m.fuzz
@@ -46,7 +43,7 @@ func (m metal) scatter(r *ray, hitRecord *hitRecord, shapes *[]shape, lights *[]
 	return r3.Dot(reflectedRay, hitRecord.normal) > 0, m.albedo, ray{p: hitRecord.p, direction: r3.Add(reflectedRay, r3.Scale(correctedFuzz, randomInUnitSphere()))}, r3.Vec{}
 }
 
-func (d dielectric) scatter(r *ray, hitRecord *hitRecord, shapes *[]shape, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
+func (d dielectric) scatter(r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
 	outwardNormal := r3.Vec{}
 	niOverNt := 0.0
 	reflectProb := 0.0
@@ -76,7 +73,7 @@ func (d dielectric) scatter(r *ray, hitRecord *hitRecord, shapes *[]shape, light
 	}
 }
 
-func (p phongBlinn) scatter(r *ray, hitRecord *hitRecord, shapes *[]shape, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
+func (p phongBlinn) scatter(r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
 	c := r3.Vec{}
 	for _, light := range *lights {
 		if light.hasPosition() {
@@ -85,7 +82,7 @@ func (p phongBlinn) scatter(r *ray, hitRecord *hitRecord, shapes *[]shape, light
 			for i := 0; i < monteCarloRepetitions; i++ {
 				hitPoint := hitRecord.p
 				monteCarloVariance := r3.Scale(monteCarloMaxLength, randomInUnitSphere())
-				if light.isPointVisible(&hitPoint, shapes, &monteCarloVariance) {
+				if light.isPointVisible(&hitPoint, bvh, &monteCarloVariance) {
 					lightPosition := *light.getPosition()
 					lightToPoint := r3.Sub(lightPosition, hitPoint)
 					lightDirection := r3.Unit(lightToPoint)

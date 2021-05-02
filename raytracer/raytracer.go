@@ -10,13 +10,12 @@ import (
 )
 
 const antiAliasingFactor = 32
-const boundingBoxMaxSize = 1000
 const raytracingMaxDepth = 16
 const cameraAperature = 0.015
 const cameraFovDegrees = 60
 const imageWidth = 640  // 3840
 const imageHeight = 360 // 2160
-const softShadowMonteCarloRepetitions = 32
+const softShadowMonteCarloRepetitions = 16
 const softShadowMonteCarloMaxLengthDeviation = 0.25
 
 type imageSpec struct {
@@ -41,13 +40,14 @@ func GenerateImage() {
 		imageHeight,
 		antiAliasingFactor,
 	}
-	theScene := tesla(imageSpec)
+	theScene := koala(imageSpec)
+	bvh := NewBoundingVolumeHierarchy(theScene.shapes)
 	myImage := image.NewRGBA(image.Rect(0, 0, imageSpec.width, imageSpec.height))
 	jobs := make(chan raytraceJob, imageSpec.height*imageSpec.width)
 	results := make(chan raytraceResult, imageSpec.height*imageSpec.width)
 	workers := 16
 	for i := 0; i < workers; i++ {
-		go computePixel(i, &imageSpec, theScene.camera, theScene.shapes, theScene.lights, jobs, results)
+		go computePixel(i, &imageSpec, theScene.camera, bvh, theScene.lights, jobs, results)
 	}
 
 	for j := imageSpec.height - 1; j >= 0; j-- {
@@ -84,14 +84,14 @@ func GenerateImage() {
 	png.Encode(outputFile, myImage)
 }
 
-func computePixel(id int, scene *imageSpec, camera *camera, shapes *[]shape, lights *[]light, jobs <-chan raytraceJob, results chan<- raytraceResult) {
+func computePixel(id int, scene *imageSpec, camera *camera, bvh *boundingVolumeHierarchy, lights *[]light, jobs <-chan raytraceJob, results chan<- raytraceResult) {
 	for job := range jobs {
 		pixelColor := r3.Vec{}
 		for s := 0; s < scene.antiAliasingFactor; s++ {
 			u := (float64(job.i) + rand.Float64()) / float64(scene.width)
 			v := (float64(job.j) + rand.Float64()) / float64(scene.height)
 			ray := camera.getRay(u, v)
-			pixelColor = r3.Add(pixelColor, color(&ray, shapes, lights, 0))
+			pixelColor = r3.Add(pixelColor, color(&ray, bvh, lights, 0))
 		}
 		pixelColor = r3.Scale(1.0/float64(scene.antiAliasingFactor), pixelColor)
 		pixelColor = r3.Vec{
@@ -109,13 +109,13 @@ func computePixel(id int, scene *imageSpec, camera *camera, shapes *[]shape, lig
 	}
 }
 
-func color(r *ray, shapes *[]shape, lights *[]light, depth int) r3.Vec {
-	var hit, minHitRecord = trace(r, shapes, 0.0)
+func color(r *ray, bvh *boundingVolumeHierarchy, lights *[]light, depth int) r3.Vec {
+	var hit, minHitRecord = bvh.trace(r, 0.0)
 	if hit {
 		if depth < raytracingMaxDepth {
-			shouldTrace, attenuation, scattered, terminalColor := (*minHitRecord.material).scatter(r, minHitRecord, shapes, lights)
+			shouldTrace, attenuation, scattered, terminalColor := minHitRecord.material.scatter(r, minHitRecord, bvh, lights)
 			if shouldTrace {
-				recColor := color(&scattered, shapes, lights, depth+1)
+				recColor := color(&scattered, bvh, lights, depth+1)
 				return r3.Vec{
 					X: attenuation.X * recColor.X,
 					Y: attenuation.Y * recColor.Y,

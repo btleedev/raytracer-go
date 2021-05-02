@@ -16,7 +16,7 @@ type scene struct {
 }
 
 func bunny(is imageSpec) scene {
-	return genericShowCase(is, true, fromStlFile(
+	return genericShowCaseWithMirrorWalls(is, true, fromStlFile(
 		"Istareyn/low-poly-stanford-bunny/Bunny-LowPoly.stl",
 		func(sh *shape) {
 			(*sh).scale(0.015)
@@ -27,7 +27,7 @@ func bunny(is imageSpec) scene {
 }
 
 func bellsprout(is imageSpec) scene {
-	return genericShowCase(is, true, fromStlFile(
+	return genericShowCaseWithMirrorWalls(is, true, fromStlFile(
 		"Philin_theBlank/bellsprout-with-flower-pot/Bellsprout_in_Flower_Pot.stl",
 		func(sh *shape) {
 			(*sh).scale(0.25)
@@ -38,18 +38,18 @@ func bellsprout(is imageSpec) scene {
 }
 
 func koala(is imageSpec) scene {
-	return genericShowCase(is, false, fromStlFile(
+	return cornerGenericShowCase(is, fromStlFile(
 		"TroySlatton/lyman-from-animal-crossing/Lyman.stl",
 		func(sh *shape) {
 			(*sh).scale(0.015)
-			(*sh).rotate(r3.Vec{X: 0, Y: 180, Z: 0})
-			(*sh).translate(r3.Vec{X: 0.5, Y: -1, Z: 0})
+			(*sh).rotate(r3.Vec{X: 0, Y: 210, Z: 0})
+			(*sh).translate(r3.Vec{X: 0.5, Y: -1, Z: -0.35})
 		},
 	))
 }
 
 func tesla(is imageSpec) scene {
-	return genericShowCase(is, true, fromStlFile(
+	return genericShowCaseWithMirrorWalls(is, true, fromStlFile(
 		"Sim3D_/tesla-model-3-for-3d-printing/solid/Tesla Model 3.STL",
 		func(sh *shape) {
 			(*sh).scale(0.015)
@@ -59,7 +59,7 @@ func tesla(is imageSpec) scene {
 	))
 }
 
-func genericShowCase(is imageSpec, withMirrors bool, centerShapes []shape) scene {
+func genericShowCaseWithMirrorWalls(is imageSpec, withWalls bool, centerShapes []shape) scene {
 	lookFrom := r3.Vec{X: 0, Y: 0, Z: -3}
 	lookAt := r3.Vec{X: 0, Y: 0, Z: 0}
 	lookFromMinusLookAt := r3.Sub(lookFrom, lookAt)
@@ -72,32 +72,99 @@ func genericShowCase(is imageSpec, withMirrors bool, centerShapes []shape) scene
 		cameraAperature,
 		math.Sqrt(lookFromMinusLookAt.X*lookFromMinusLookAt.X+lookFromMinusLookAt.Y*lookFromMinusLookAt.Y+lookFromMinusLookAt.Z*lookFromMinusLookAt.Z),
 	)
-	shapes := append(centerShapes, floor(-1)...)
-	if withMirrors {
-		shapes = append(shapes, mirrorWalls(3, 0.75)...)
+	shapes := append(centerShapes, floorRoof(-1, 3, phongBlinn{specValue: 0.0, specShininess: 0.0, color: r3.Vec{X: 255.0 / 255.0, Y: 235.0 / 255.0, Z: 205.0 / 255.0}})...)
+	if withWalls {
+		shapes = append(shapes, walls(3, metal{albedo: r3.Vec{X: 0.75, Y: 0.75, Z: 0.75}}, true, true, true, true)...)
 	}
 	lights := []light{
-		//ambientLight{
-		//	colorFrac: r3.Vec{
-		//		X: 255 / 255.0,
-		//		Y: 241 / 255.0,
-		//		Z: 224 / 255.0,
-		//	},
-		//	lightIntensity: 0.1,
-		//},
 		spotLight{
 			colorFrac: r3.Vec{
 				X: 255 / 255.0,
+				Y: 0 / 255.0,
+				Z: 0 / 255.0,
+			},
+			lightIntensity: 1.0,
+			position: r3.Vec{
+				X: -1,
+				Y: 2.9,
+				Z: -1,
+			},
+			direction: r3.Sub(r3.Vec{X: 0, Y: 0, Z: 0}, r3.Vec{X: -1, Y: 2.9, Z: -1}),
+			angle:     25,
+		},
+		spotLight{
+			colorFrac: r3.Vec{
+				X: 0 / 255.0,
 				Y: 255 / 255.0,
+				Z: 0 / 255.0,
+			},
+			lightIntensity: 1.0,
+			position: r3.Vec{
+				X: 1,
+				Y: 2.9,
+				Z: -1,
+			},
+			direction: r3.Sub(r3.Vec{X: 0, Y: 0, Z: 0}, r3.Vec{X: 1, Y: 2.9, Z: -1}),
+			angle:     25,
+		},
+		spotLight{
+			colorFrac: r3.Vec{
+				X: 0 / 255.0,
+				Y: 0 / 255.0,
 				Z: 255 / 255.0,
 			},
-			lightIntensity: 3.0,
+			lightIntensity: 1.0,
 			position: r3.Vec{
 				X: 0,
 				Y: 2.9,
-				Z: 0,
+				Z: 1,
 			},
-			direction: r3.Sub(r3.Vec{X: 0, Y: 0, Z: 0}, r3.Vec{X: 0, Y: 2.9, Z: 0}),
+			direction: r3.Sub(r3.Vec{X: 0, Y: 0, Z: 0}, r3.Vec{X: 0, Y: 2.9, Z: 1}),
+			angle:     25,
+		},
+		spotLight{
+			colorFrac: r3.Vec{
+				X: 0 / 255.0,
+				Y: 0 / 255.0,
+				Z: 255 / 255.0,
+			},
+			lightIntensity: 1.0,
+			position: r3.Vec{
+				X: -1,
+				Y: -1,
+				Z: 1,
+			},
+			direction: r3.Sub(r3.Vec{X: 0, Y: 0, Z: 0}, r3.Vec{X: -1, Y: -1, Z: 1}),
+			angle:     25,
+		},
+		spotLight{
+			colorFrac: r3.Vec{
+				X: 255 / 255.0,
+				Y: 0 / 255.0,
+				Z: 0 / 255.0,
+			},
+			lightIntensity: 1.0,
+			position: r3.Vec{
+				X: 1,
+				Y: -1,
+				Z: 1,
+			},
+			direction: r3.Sub(r3.Vec{X: 0, Y: 0, Z: 0}, r3.Vec{X: 1, Y: -1, Z: 1}),
+			angle:     25,
+		},
+		spotLight{
+			colorFrac: r3.Vec{
+				X: 0 / 255.0,
+				Y: 255 / 255.0,
+				Z: 0 / 255.0,
+			},
+			lightIntensity: 1.0,
+			position: r3.Vec{
+				X: 0,
+				Y: -1,
+				Z: -1,
+			},
+			direction: r3.Sub(r3.Vec{X: 0, Y: 0, Z: 0}, r3.Vec{X: 0, Y: -1, Z: -1}),
 			angle:     25,
 		},
 	}
@@ -108,96 +175,192 @@ func genericShowCase(is imageSpec, withMirrors bool, centerShapes []shape) scene
 	}
 }
 
-func floor(yCoord float64) []shape {
-	return []shape{
-		&triangle{
-			pointA:      r3.Vec{X: 10000, Y: yCoord, Z: 10000},
-			pointB:      r3.Vec{X: 10000, Y: yCoord, Z: -10000},
-			pointC:      r3.Vec{X: -10000, Y: yCoord, Z: 10000},
-			singleSided: true,
-			mat: phongBlinn{
-				specValue:     0.0,
-				specShininess: 0.0,
-				color:         r3.Vec{X: 255.0 / 255.0, Y: 235.0 / 255.0, Z: 205.0 / 255.0},
+func cornerGenericShowCase(is imageSpec, centerShapes []shape) scene {
+	radius := 3.0
+	lightDist := radius / 2
+	lookFrom := r3.Vec{X: -(radius - 1), Y: 0, Z: -(radius - 1)}
+	lookAt := r3.Vec{X: 0, Y: 0, Z: 0}
+	lookFromMinusLookAt := r3.Sub(lookFrom, lookAt)
+	cam := NewCamera(
+		lookFrom,
+		lookAt,
+		r3.Vec{X: 0, Y: 1, Z: 0},
+		cameraFovDegrees,
+		float64(is.width)/float64(is.height),
+		cameraAperature,
+		math.Sqrt(lookFromMinusLookAt.X*lookFromMinusLookAt.X+lookFromMinusLookAt.Y*lookFromMinusLookAt.Y+lookFromMinusLookAt.Z*lookFromMinusLookAt.Z),
+	)
+	shapes := append(centerShapes, floorRoof(-1, radius, phongBlinn{specValue: 1.0, specShininess: 0, color: r3.Vec{X: rand.Float64(), Y: rand.Float64(), Z: rand.Float64()}})...)
+	shapes = append(shapes, walls(radius, phongBlinn{specValue: 1.0, specShininess: 0, color: r3.Vec{X: rand.Float64(), Y: rand.Float64(), Z: rand.Float64()}}, true, true, true, true)...)
+	lights := []light{
+		pointLight{
+			colorFrac: r3.Vec{
+				X: 255 / 255.0,
+				Y: 255 / 255.0,
+				Z: 255 / 255.0,
+			},
+			lightIntensity: 2.0,
+			position: r3.Vec{
+				X: 0,
+				Y: lightDist,
+				Z: 0,
 			},
 		},
-		&triangle{
-			pointA:      r3.Vec{X: -10000, Y: yCoord, Z: -10000},
-			pointB:      r3.Vec{X: -10000, Y: yCoord, Z: 10000},
-			pointC:      r3.Vec{X: 10000, Y: yCoord, Z: -10000},
-			singleSided: true,
-			mat: phongBlinn{
-				specValue:     0.0,
-				specShininess: 0.0,
-				color:         r3.Vec{X: 255.0 / 255.0, Y: 235.0 / 255.0, Z: 205.0 / 255.0},
+		pointLight{
+			colorFrac: r3.Vec{
+				X: 0 / 255.0,
+				Y: 0 / 255.0,
+				Z: 255 / 255.0,
 			},
+			lightIntensity: 1.0,
+			position: r3.Vec{
+				X: -lightDist,
+				Y: 0,
+				Z: -lightDist,
+			},
+		},
+		pointLight{
+			colorFrac: r3.Vec{
+				X: 255 / 255.0,
+				Y: 0 / 255.0,
+				Z: 0 / 255.0,
+			},
+			lightIntensity: 1.0,
+			position: r3.Vec{
+				X: lightDist,
+				Y: 0,
+				Z: -lightDist,
+			},
+		},
+		pointLight{
+			colorFrac: r3.Vec{
+				X: 0 / 255.0,
+				Y: 255 / 255.0,
+				Z: 0 / 255.0,
+			},
+			lightIntensity: 1.0,
+			position: r3.Vec{
+				X: 0,
+				Y: 0,
+				Z: lightDist,
+			},
+		},
+	}
+	return scene{
+		camera: &cam,
+		shapes: &shapes,
+		lights: &lights,
+	}
+}
+
+func floorRoof(yCoordFloor, yCoordRoof float64, mat material) []shape {
+	return []shape{
+		&triangle{
+			pointA:      r3.Vec{X: 50, Y: yCoordFloor, Z: 50},
+			pointB:      r3.Vec{X: 50, Y: yCoordFloor, Z: -50},
+			pointC:      r3.Vec{X: -50, Y: yCoordFloor, Z: 50},
+			singleSided: true,
+			mat:         mat,
+		},
+		&triangle{
+			pointA:      r3.Vec{X: -50, Y: yCoordFloor, Z: -50},
+			pointB:      r3.Vec{X: -50, Y: yCoordFloor, Z: 50},
+			pointC:      r3.Vec{X: 50, Y: yCoordFloor, Z: -50},
+			singleSided: true,
+			mat:         mat,
+		},
+		&triangle{
+			pointA:      r3.Vec{X: 50, Y: yCoordRoof, Z: 50},
+			pointB:      r3.Vec{X: -50, Y: yCoordRoof, Z: 50},
+			pointC:      r3.Vec{X: 50, Y: yCoordRoof, Z: -50},
+			singleSided: true,
+			mat:         mat,
+		},
+		&triangle{
+			pointA:      r3.Vec{X: -50, Y: yCoordRoof, Z: -50},
+			pointB:      r3.Vec{X: 50, Y: yCoordRoof, Z: -50},
+			pointC:      r3.Vec{X: -50, Y: yCoordRoof, Z: 50},
+			singleSided: true,
+			mat:         mat,
 		},
 	}
 }
 
-func mirrorWalls(radius float64, albedo float64) []shape {
-	return []shape{
-		// back
-		&triangle{
-			pointA:      r3.Vec{X: radius, Y: radius, Z: -radius},
-			pointB:      r3.Vec{X: -radius, Y: radius, Z: -radius},
-			pointC:      r3.Vec{X: radius, Y: -radius, Z: -radius},
-			singleSided: true,
-			mat:         metal{albedo: r3.Vec{X: albedo, Y: albedo, Z: albedo}},
-		},
-		&triangle{
-			pointA:      r3.Vec{X: -radius, Y: -radius, Z: -radius},
-			pointB:      r3.Vec{X: radius, Y: -radius, Z: -radius},
-			pointC:      r3.Vec{X: -radius, Y: radius, Z: -radius},
-			singleSided: true,
-			mat:         metal{albedo: r3.Vec{X: albedo, Y: albedo, Z: albedo}},
-		},
-		// right
-		&triangle{
-			pointA:      r3.Vec{X: radius, Y: radius, Z: 3},
-			pointB:      r3.Vec{X: radius, Y: radius, Z: -radius},
-			pointC:      r3.Vec{X: radius, Y: -radius, Z: 3},
-			singleSided: true,
-			mat:         metal{albedo: r3.Vec{X: albedo, Y: albedo, Z: albedo}},
-		},
-		&triangle{
-			pointA:      r3.Vec{X: radius, Y: -radius, Z: -radius},
-			pointB:      r3.Vec{X: radius, Y: -radius, Z: 3},
-			pointC:      r3.Vec{X: radius, Y: radius, Z: -radius},
-			singleSided: true,
-			mat:         metal{albedo: r3.Vec{X: albedo, Y: albedo, Z: albedo}},
-		},
-		// left
-		&triangle{
-			pointA:      r3.Vec{X: -radius, Y: radius, Z: 3},
-			pointB:      r3.Vec{X: -radius, Y: -radius, Z: 3},
-			pointC:      r3.Vec{X: -radius, Y: radius, Z: -radius},
-			singleSided: true,
-			mat:         metal{albedo: r3.Vec{X: albedo, Y: albedo, Z: albedo}},
-		},
-		&triangle{
-			pointA:      r3.Vec{X: -radius, Y: -radius, Z: -radius},
-			pointB:      r3.Vec{X: -radius, Y: radius, Z: -radius},
-			pointC:      r3.Vec{X: -radius, Y: -radius, Z: 3},
-			singleSided: true,
-			mat:         metal{albedo: r3.Vec{X: albedo, Y: albedo, Z: albedo}},
-		},
-		// back
-		&triangle{
-			pointA:      r3.Vec{X: radius, Y: radius, Z: 3},
-			pointB:      r3.Vec{X: radius, Y: -radius, Z: 3},
-			pointC:      r3.Vec{X: -radius, Y: radius, Z: 3},
-			singleSided: true,
-			mat:         metal{albedo: r3.Vec{X: albedo, Y: albedo, Z: albedo}},
-		},
-		&triangle{
-			pointA:      r3.Vec{X: -radius, Y: -radius, Z: 3},
-			pointB:      r3.Vec{X: -radius, Y: radius, Z: 3},
-			pointC:      r3.Vec{X: radius, Y: -radius, Z: 3},
-			singleSided: true,
-			mat:         metal{albedo: r3.Vec{X: albedo, Y: albedo, Z: albedo}},
-		},
+func walls(radius float64, mat material, front, back, left, right bool) []shape {
+	shapes := make([]shape, 0, 8)
+	if front {
+		shapes = append(shapes, []shape{
+			&triangle{
+				pointA:      r3.Vec{X: radius, Y: radius, Z: radius},
+				pointB:      r3.Vec{X: radius, Y: -radius, Z: radius},
+				pointC:      r3.Vec{X: -radius, Y: radius, Z: radius},
+				singleSided: true,
+				mat:         mat,
+			},
+			&triangle{
+				pointA:      r3.Vec{X: -radius, Y: -radius, Z: radius},
+				pointB:      r3.Vec{X: -radius, Y: radius, Z: radius},
+				pointC:      r3.Vec{X: radius, Y: -radius, Z: radius},
+				singleSided: true,
+				mat:         mat,
+			},
+		}...)
 	}
+	if back {
+		shapes = append(shapes, []shape{
+			&triangle{
+				pointA:      r3.Vec{X: radius, Y: radius, Z: -radius},
+				pointB:      r3.Vec{X: -radius, Y: radius, Z: -radius},
+				pointC:      r3.Vec{X: radius, Y: -radius, Z: -radius},
+				singleSided: true,
+				mat:         mat,
+			},
+			&triangle{
+				pointA:      r3.Vec{X: -radius, Y: -radius, Z: -radius},
+				pointB:      r3.Vec{X: radius, Y: -radius, Z: -radius},
+				pointC:      r3.Vec{X: -radius, Y: radius, Z: -radius},
+				singleSided: true,
+				mat:         mat,
+			},
+		}...)
+	}
+	if left {
+		shapes = append(shapes, []shape{
+			&triangle{
+				pointA:      r3.Vec{X: radius, Y: radius, Z: radius},
+				pointB:      r3.Vec{X: radius, Y: radius, Z: -radius},
+				pointC:      r3.Vec{X: radius, Y: -radius, Z: radius},
+				singleSided: true,
+				mat:         mat,
+			},
+			&triangle{
+				pointA:      r3.Vec{X: radius, Y: -radius, Z: -radius},
+				pointB:      r3.Vec{X: radius, Y: -radius, Z: radius},
+				pointC:      r3.Vec{X: radius, Y: radius, Z: -radius},
+				singleSided: true,
+				mat:         mat,
+			},
+		}...)
+	}
+	if right {
+		shapes = append(shapes, []shape{
+			&triangle{
+				pointA:      r3.Vec{X: -radius, Y: radius, Z: radius},
+				pointB:      r3.Vec{X: -radius, Y: -radius, Z: radius},
+				pointC:      r3.Vec{X: -radius, Y: radius, Z: -radius},
+				singleSided: true,
+				mat:         mat,
+			},
+			&triangle{
+				pointA:      r3.Vec{X: -radius, Y: -radius, Z: -radius},
+				pointB:      r3.Vec{X: -radius, Y: radius, Z: -radius},
+				pointC:      r3.Vec{X: -radius, Y: -radius, Z: radius},
+				singleSided: true,
+				mat:         mat,
+			},
+		}...)
+	}
+	return shapes
 }
 
 func fromStlFile(stlFileName string, mutator func(shape *shape)) []shape {
@@ -218,9 +381,9 @@ func fromStlFile(stlFileName string, mutator func(shape *shape)) []shape {
 	})
 
 	pMinDefault := r3.Vec{
-		X: math.MaxInt64,
-		Y: math.MaxInt64,
-		Z: math.MaxInt64,
+		X: math.MaxFloat64,
+		Y: math.MaxFloat64,
+		Z: math.MaxFloat64,
 	}
 	pMaxDefault := r3.Vec{
 		X: math.MinInt64,
@@ -229,23 +392,24 @@ func fromStlFile(stlFileName string, mutator func(shape *shape)) []shape {
 	}
 	pMin := pMinDefault
 	pMax := pMaxDefault
-	shapes := make([]shape, 0, (len(stlFile.Triangles)/boundingBoxMaxSize)+1)
-	boundingBoxShapes := make([]shape, 0, boundingBoxMaxSize)
+	shapes := make([]shape, 0, len(stlFile.Triangles))
 	for i, stlTriangle := range stlFile.Triangles {
-		idx := i % boundingBoxMaxSize
 		s := triangle{
 			pointA:      r3.Vec{X: float64(stlTriangle.Vertices[0][0]), Y: float64(stlTriangle.Vertices[0][1]), Z: float64(stlTriangle.Vertices[0][2])},
 			pointB:      r3.Vec{X: float64(stlTriangle.Vertices[1][0]), Y: float64(stlTriangle.Vertices[1][1]), Z: float64(stlTriangle.Vertices[1][2])},
 			pointC:      r3.Vec{X: float64(stlTriangle.Vertices[2][0]), Y: float64(stlTriangle.Vertices[2][1]), Z: float64(stlTriangle.Vertices[2][2])},
 			singleSided: false,
-			mat: phongBlinn{
-				specValue:     2,
-				specShininess: 5,
-				color:         r3.Vec{X: rand.Float64(), Y: rand.Float64(), Z: rand.Float64()},
+			mat: dielectric{
+				refractiveIndex: 0,
 			},
+			//mat: phongBlinn{
+			//	specValue:     2,
+			//	specShininess: 5,
+			//	color:         r3.Vec{X: rand.Float64(), Y: rand.Float64(), Z: rand.Float64()},
+			//},
 		}
-		boundingBoxShapes = append(boundingBoxShapes, &s)
-		mutator(&boundingBoxShapes[idx])
+		shapes = append(shapes, &s)
+		mutator(&shapes[i])
 
 		// calculate bounding box
 		pMin.X = math.Min(pMin.X, math.Min(s.pointA.X, math.Min(s.pointB.X, s.pointC.X)))
@@ -254,17 +418,6 @@ func fromStlFile(stlFileName string, mutator func(shape *shape)) []shape {
 		pMax.X = math.Max(pMax.X, math.Max(s.pointA.X, math.Max(s.pointB.X, s.pointC.X)))
 		pMax.Y = math.Max(pMax.Y, math.Max(s.pointA.Y, math.Max(s.pointB.Y, s.pointC.Y)))
 		pMax.Z = math.Max(pMax.Z, math.Max(s.pointA.Z, math.Max(s.pointB.Z, s.pointC.Z)))
-
-		if i == len(stlFile.Triangles)-1 || (idx+1)%boundingBoxMaxSize == 0 {
-			shapes = append(shapes, &boundingBox{
-				pMin:   pMin,
-				pMax:   pMax,
-				shapes: boundingBoxShapes,
-			})
-			boundingBoxShapes = make([]shape, 0, boundingBoxMaxSize)
-			pMin = pMinDefault
-			pMax = pMaxDefault
-		}
 	}
 
 	fmt.Printf("Loaded stl file %s, %v triangles\n", stlFileName, len(shapes))

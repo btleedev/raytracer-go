@@ -9,7 +9,7 @@ type hitRecord struct {
 	t        float64
 	p        r3.Vec
 	normal   r3.Vec
-	material *material
+	material material
 }
 
 type shape interface {
@@ -18,6 +18,8 @@ type shape interface {
 	scale(c float64)
 	// rotation vector is in degrees
 	rotate(rv r3.Vec)
+	computeSquareBounds() (lowest r3.Vec, highest r3.Vec)
+	centroid() r3.Vec
 }
 
 type sphere struct {
@@ -53,7 +55,7 @@ func (s sphere) hit(r *ray, tMin float64, tMax float64) hitRecord {
 				t:        firstPoint,
 				p:        r.PointAtT(firstPoint),
 				normal:   r3.Scale(1/s.radius, r3.Sub(r.PointAtT(firstPoint), s.center)),
-				material: &s.mat,
+				material: s.mat,
 			}
 		}
 		secondPoint := (-b - math.Sqrt(b*b-a*c)) / a
@@ -62,7 +64,7 @@ func (s sphere) hit(r *ray, tMin float64, tMax float64) hitRecord {
 				t:        secondPoint,
 				p:        r.PointAtT(secondPoint),
 				normal:   r3.Scale(1/s.radius, r3.Sub(r.PointAtT(secondPoint), s.center)),
-				material: &s.mat,
+				material: s.mat,
 			}
 		}
 	}
@@ -80,6 +82,14 @@ func (s *sphere) scale(c float64) {
 }
 
 func (s *sphere) rotate(rv r3.Vec) {
+}
+
+func (s sphere) computeSquareBounds() (lowest r3.Vec, highest r3.Vec) {
+	panic("implement me")
+}
+
+func (s sphere) centroid() r3.Vec {
+	return s.center
 }
 
 func (tr triangle) hit(r *ray, tMin float64, tMax float64) hitRecord {
@@ -142,7 +152,7 @@ func (tr triangle) hit(r *ray, tMin float64, tMax float64) hitRecord {
 		t:        t,
 		p:        p,
 		normal:   normal,
-		material: &tr.mat,
+		material: tr.mat,
 	}
 }
 
@@ -162,6 +172,36 @@ func (t *triangle) rotate(rv r3.Vec) {
 	t.pointA = rotatePoint(t.pointA, rv)
 	t.pointB = rotatePoint(t.pointB, rv)
 	t.pointC = rotatePoint(t.pointC, rv)
+}
+
+func (tr triangle) computeSquareBounds() (lowest r3.Vec, highest r3.Vec) {
+	pMin := r3.Vec{X: math.MaxFloat64, Y: math.MaxFloat64, Z: math.MaxFloat64}
+	pMax := r3.Vec{X: float64(math.MinInt64), Y: float64(math.MinInt64), Z: float64(math.MinInt64)}
+
+	pMin.X = math.Min(pMin.X, tr.pointA.X)
+	pMin.X = math.Min(pMin.X, tr.pointB.X)
+	pMin.X = math.Min(pMin.X, tr.pointC.X)
+	pMin.Y = math.Min(pMin.Y, tr.pointA.Y)
+	pMin.Y = math.Min(pMin.Y, tr.pointB.Y)
+	pMin.Y = math.Min(pMin.Y, tr.pointC.Y)
+	pMin.Z = math.Min(pMin.Z, tr.pointA.Z)
+	pMin.Z = math.Min(pMin.Z, tr.pointB.Z)
+	pMin.Z = math.Min(pMin.Z, tr.pointC.Z)
+
+	pMax.X = math.Max(pMax.X, tr.pointA.X)
+	pMax.X = math.Max(pMax.X, tr.pointB.X)
+	pMax.X = math.Max(pMax.X, tr.pointC.X)
+	pMax.Y = math.Max(pMax.Y, tr.pointA.Y)
+	pMax.Y = math.Max(pMax.Y, tr.pointB.Y)
+	pMax.Y = math.Max(pMax.Y, tr.pointC.Y)
+	pMax.Z = math.Max(pMax.Z, tr.pointA.Z)
+	pMax.Z = math.Max(pMax.Z, tr.pointB.Z)
+	pMax.Z = math.Max(pMax.Z, tr.pointC.Z)
+	return pMin, pMax
+}
+
+func (tr triangle) centroid() r3.Vec {
+	return r3.Scale(1/3.0, r3.Add(tr.pointA, r3.Add(tr.pointB, tr.pointC)))
 }
 
 func rotatePoint(point r3.Vec, rv r3.Vec) r3.Vec {
@@ -187,84 +227,4 @@ func rotatePoint(point r3.Vec, rv r3.Vec) r3.Vec {
 	rotatedPoint.Z = z
 
 	return rotatedPoint
-}
-
-func (b boundingBox) hit(r *ray, tMin float64, tMax float64) hitRecord {
-	normalizedDir := r3.Unit(r.direction)
-	invDirection := r3.Vec{
-		X: 1 / normalizedDir.X,
-		Y: 1 / normalizedDir.Y,
-		Z: 1 / normalizedDir.Z,
-	}
-	// 1 if less than 0, invert if less than 0
-	bounds0 := b.pMin
-	bounds1 := b.pMax
-	if r.direction.X < 0 {
-		bounds0.X = b.pMax.X
-		bounds1.X = b.pMin.X
-	}
-	if r.direction.Y < 0 {
-		bounds0.Y = b.pMax.Y
-		bounds1.Y = b.pMin.Y
-	}
-	if r.direction.Z < 0 {
-		bounds0.Z = b.pMax.Z
-		bounds1.Z = b.pMin.Z
-	}
-
-	ptMin := (bounds0.X - r.p.X) * invDirection.X
-	ptMax := (bounds1.X - r.p.X) * invDirection.X
-	tYMin := (bounds0.Y - r.p.Y) * invDirection.Y
-	tYMax := (bounds1.Y - r.p.Y) * invDirection.Y
-
-	if ptMin > tYMax || tYMin > ptMax {
-		return hitRecord{t: -1}
-	}
-
-	if tYMin > ptMin {
-		ptMin = tYMin
-	}
-	if tYMax < ptMax {
-		ptMax = tYMax
-	}
-
-	tZMin := (bounds0.Z - r.p.Z) * invDirection.Z
-	tZMax := (bounds1.Z - r.p.Z) * invDirection.Z
-
-	if (ptMin > tZMax) || (ptMax < tZMin) {
-		return hitRecord{t: -1}
-	}
-
-	if tZMin > ptMin {
-		ptMin = tZMin
-	}
-	if tZMax < ptMax {
-		ptMax = tZMax
-	}
-
-	tHit := tMin
-	if tHit < tMin || tHit > tMax {
-		return hitRecord{t: -1}
-	}
-
-	_, hr := trace(r, &(b.shapes), tMin)
-	return *hr
-}
-
-func (b *boundingBox) translate(tv r3.Vec) {
-	for _, v := range b.shapes {
-		v.translate(tv)
-	}
-}
-
-func (b *boundingBox) scale(c float64) {
-	for _, v := range b.shapes {
-		v.scale(c)
-	}
-}
-
-func (b *boundingBox) rotate(rv r3.Vec) {
-	for _, v := range b.shapes {
-		v.rotate(rv)
-	}
 }
