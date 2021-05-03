@@ -10,6 +10,7 @@ import (
 )
 
 const antiAliasingFactor = 32
+const bvhCentroidJitterFactor = 0.0000000001
 const raytracingMaxDepth = 16
 const cameraAperature = 0.015
 const cameraFovDegrees = 60

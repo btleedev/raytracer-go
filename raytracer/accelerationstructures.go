@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gonum.org/v1/gonum/spatial/r3"
 	"math"
+	"math/rand"
 )
 
 type boundingVolumeHierarchyNode struct {
@@ -33,6 +34,9 @@ func NewBoundingVolumeHierarchy(shapes *[]shape) *boundingVolumeHierarchy {
 		pMax.Y = math.Max(pMax.Y, highest.Y)
 		pMax.Z = math.Max(pMax.Z, highest.Z)
 	}
+	// add the max jitter than can happen when jittering the centroid of shapes
+	pMin = r3.Sub(pMin, r3.Scale(bvhCentroidJitterFactor, r3.Vec{X: 1, Y: 1, Z: 1}))
+	pMax = r3.Add(pMax, r3.Scale(bvhCentroidJitterFactor, r3.Vec{X: 1, Y: 1, Z: 1}))
 
 	bvh := boundingVolumeHierarchy{
 		shapes: shapes,
@@ -158,8 +162,9 @@ func addToBVH(
 // back bottom right = 5
 // back top left = 6
 // back top right = 7
+// to prevent two shapes from having the same centroid coordinates, we add a random jitter factor to each centroid
 func getBvhQuadrantIndex(s *shape, pMin *r3.Vec, pMax *r3.Vec) uint8 {
-	centroid := (*s).centroid()
+	centroid := r3.Add((*s).centroid(), r3.Scale(bvhCentroidJitterFactor, r3.Vec{X: rand.Float64(), Y: rand.Float64(), Z: rand.Float64()}))
 	idx := uint8(0)
 	if centroid.X > pMin.X+(pMax.X-pMin.X)/2 {
 		idx += 1
