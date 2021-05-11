@@ -16,6 +16,7 @@ func main() {
 	// CPU profiling by default
 	// defer profile.Start().Stop()
 
+	cameraLookFrom, cameraLookAt, cameraUp, cameraFocusPoint, shapes, lights := sample()
 	imageSpec := raytracer.ImageSpec{
 		Width:                           imageWidth,
 		Height:                          imageHeight,
@@ -24,7 +25,13 @@ func main() {
 		CameraFov:                       cameraFovDegrees,
 		RayTracingMaxDepth:              raytracingMaxDepth,
 		SoftShadowMonteCarloRepetitions: softShadowMonteCarloRepetitions,
-	}
 
-	raytracer.GenerateImage(imageSpec)
+		CameraLookFrom:   cameraLookFrom,
+		CameraLookAt:     cameraLookAt,
+		CameraUp:         cameraUp,
+		CameraFocusPoint: cameraFocusPoint,
+
+		ImageLocation: "out.png",
+	}
+	raytracer.GenerateImage(imageSpec, shapes, lights)
 }

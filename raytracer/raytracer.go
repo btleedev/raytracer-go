@@ -5,6 +5,7 @@ import (
 	"gonum.org/v1/gonum/spatial/r3"
 	"image"
 	"image/png"
+	"math"
 	"math/rand"
 	"os"
 	"time"
@@ -21,6 +22,13 @@ type ImageSpec struct {
 	CameraFov                       float64 // in degrees
 	RayTracingMaxDepth              int
 	SoftShadowMonteCarloRepetitions int
+
+	CameraLookFrom   r3.Vec
+	CameraLookAt     r3.Vec
+	CameraUp         r3.Vec
+	CameraFocusPoint r3.Vec // when using camera aperature, point to focus on
+
+	ImageLocation string
 }
 
 type raytraceJob struct {
@@ -33,15 +41,24 @@ type raytraceResult struct {
 	pixelColorFrac r3.Vec
 }
 
-func GenerateImage(imageSpec ImageSpec) {
-	theScene := sample(imageSpec)
-	bvh := NewBoundingVolumeHierarchy(theScene.shapes)
+func GenerateImage(imageSpec ImageSpec, shapes []Shape, lights []Light) {
+	lookFromMinusLookAt := r3.Sub(imageSpec.CameraLookFrom, imageSpec.CameraLookAt)
+	cam := NewCamera(
+		imageSpec.CameraLookFrom,
+		imageSpec.CameraLookAt,
+		imageSpec.CameraUp,
+		imageSpec.CameraFov,
+		float64(imageSpec.Width)/float64(imageSpec.Height),
+		imageSpec.CameraAperature,
+		math.Sqrt(lookFromMinusLookAt.X*lookFromMinusLookAt.X+lookFromMinusLookAt.Y*lookFromMinusLookAt.Y+lookFromMinusLookAt.Z*lookFromMinusLookAt.Z),
+	)
+	bvh := NewBoundingVolumeHierarchy(&shapes)
 	myImage := image.NewRGBA(image.Rect(0, 0, imageSpec.Width, imageSpec.Height))
 	jobs := make(chan raytraceJob, imageSpec.Height*imageSpec.Width)
 	results := make(chan raytraceResult, imageSpec.Height*imageSpec.Width)
 	workers := 16
 	for i := 0; i < workers; i++ {
-		go computePixel(i, &imageSpec, theScene.camera, bvh, theScene.lights, jobs, results)
+		go computePixel(i, &imageSpec, &cam, bvh, &lights, jobs, results)
 	}
 
 	startTime := time.Now()
@@ -71,7 +88,7 @@ func GenerateImage(imageSpec ImageSpec) {
 		}
 	}
 
-	outputFile, err := os.Create("out.png")
+	outputFile, err := os.Create(imageSpec.ImageLocation)
 	if err != nil {
 		panic("failed to create image")
 	}
@@ -81,7 +98,7 @@ func GenerateImage(imageSpec ImageSpec) {
 	fmt.Printf("Finished ray tracing in %s\n", time.Since(startTime).String())
 }
 
-func computePixel(id int, is *ImageSpec, camera *camera, bvh *boundingVolumeHierarchy, lights *[]light, jobs <-chan raytraceJob, results chan<- raytraceResult) {
+func computePixel(id int, is *ImageSpec, camera *camera, bvh *boundingVolumeHierarchy, lights *[]Light, jobs <-chan raytraceJob, results chan<- raytraceResult) {
 	for job := range jobs {
 		pixelColor := r3.Vec{}
 		for s := 0; s < is.AntiAliasingFactor; s++ {
@@ -106,7 +123,7 @@ func computePixel(id int, is *ImageSpec, camera *camera, bvh *boundingVolumeHier
 	}
 }
 
-func color(is *ImageSpec, r *ray, bvh *boundingVolumeHierarchy, lights *[]light, depth int) r3.Vec {
+func color(is *ImageSpec, r *ray, bvh *boundingVolumeHierarchy, lights *[]Light, depth int) r3.Vec {
 	var hit, minHitRecord = bvh.trace(r, 0.0)
 	if hit {
 		if depth < is.RayTracingMaxDepth {
@@ -124,7 +141,7 @@ func color(is *ImageSpec, r *ray, bvh *boundingVolumeHierarchy, lights *[]light,
 		}
 	}
 
-	// background color
+	// background Color
 	return r3.Vec{
 		X: 0 / 255.0,
 		Y: 0 / 255.0,

@@ -12,18 +12,18 @@ type boundingVolumeHierarchyNode struct {
 	pMin     r3.Vec
 	pMax     r3.Vec
 	leaf     bool
-	shape    *shape
+	shape    *Shape
 	children []*boundingVolumeHierarchyNode
 }
 
 type boundingVolumeHierarchy struct {
 	root    boundingVolumeHierarchyNode
 	extents []r3.Vec
-	shapes  *[]shape
+	shapes  *[]Shape
 }
 
 // bounding box hierarchy where boundaries are computed in a box shape
-func NewBoundingVolumeHierarchy(shapes *[]shape) *boundingVolumeHierarchy {
+func NewBoundingVolumeHierarchy(shapes *[]Shape) *boundingVolumeHierarchy {
 	fmt.Printf("Building BoundingVolumeHierarchy\n")
 	pMin := r3.Vec{X: math.MaxFloat64, Y: math.MaxFloat64, Z: math.MaxFloat64}
 	pMax := r3.Vec{X: float64(math.MinInt64), Y: float64(math.MinInt64), Z: float64(math.MinInt64)}
@@ -176,7 +176,7 @@ func recomputeNodeBounds(node *boundingVolumeHierarchyNode) (pMin r3.Vec, pMax r
 
 func addToBVH(
 	curr *boundingVolumeHierarchyNode,
-	shape *shape,
+	shape *Shape,
 ) {
 	if curr.leaf {
 		// empty leaf node, feel free to add
@@ -213,7 +213,7 @@ func addToBVH(
 // back top left = 6
 // back top right = 7
 // to prevent two shapes from having the same centroid coordinates, we add a random jitter factor to each centroid
-func getBvhQuadrantIndex(s *shape, pMin *r3.Vec, pMax *r3.Vec) uint8 {
+func getBvhQuadrantIndex(s *Shape, pMin *r3.Vec, pMax *r3.Vec) uint8 {
 	centroid := r3.Add((*s).centroid(), r3.Scale(bvhCentroidJitterFactor, r3.Vec{X: rand.Float64(), Y: rand.Float64(), Z: rand.Float64()}))
 	idx := uint8(0)
 	if centroid.X > pMin.X+(pMax.X-pMin.X)/2 {

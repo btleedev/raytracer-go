@@ -14,7 +14,7 @@ func (r ray) PointAtT(t float64) r3.Vec {
 	return r3.Add(r.p, r3.Scale(t, r.direction))
 }
 
-func trace(r *ray, shapes *[]shape, tMin float64) (hit bool, record *hitRecord) {
+func trace(r *ray, shapes *[]Shape, tMin float64) (hit bool, record *hitRecord) {
 	var minHitRecord = hitRecord{
 		t: math.MaxFloat64,
 	}

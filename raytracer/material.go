@@ -6,44 +6,44 @@ import (
 	"math/rand"
 )
 
-type material interface {
-	scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec)
+type Material interface {
+	scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]Light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec)
 }
 
-type standard struct {
-	color r3.Vec
+type Standard struct {
+	Color r3.Vec
 }
 
-type metal struct {
-	albedo r3.Vec
-	fuzz   float64
+type Metal struct {
+	Albedo r3.Vec
+	Fuzz   float64
 }
 
-type dielectric struct {
-	refractiveIndex float64
+type Dielectric struct {
+	RefractiveIndex float64
 }
 
-type phongBlinn struct {
-	color         r3.Vec
-	specularColor r3.Vec
-	specHardness  float64
+type PhongBlinn struct {
+	Color         r3.Vec
+	SpecularColor r3.Vec
+	SpecHardness  float64
 }
 
-func (d standard) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
-	return false, r3.Vec{}, ray{p: hitRecord.p, direction: r3.Vec{}}, d.color
+func (d Standard) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]Light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
+	return false, r3.Vec{}, ray{p: hitRecord.p, direction: r3.Vec{}}, d.Color
 }
 
-func (m metal) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
+func (m Metal) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]Light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
 	correctedFuzz := 1.0
-	if m.fuzz < 1.0 {
-		correctedFuzz = m.fuzz
+	if m.Fuzz < 1.0 {
+		correctedFuzz = m.Fuzz
 	}
 	directionNormalized := r3.Unit(r.direction)
 	reflectedRay := reflected(&directionNormalized, &hitRecord.normal)
-	return r3.Dot(reflectedRay, hitRecord.normal) > 0, m.albedo, ray{p: hitRecord.p, direction: r3.Add(reflectedRay, r3.Scale(correctedFuzz, randomInUnitSphere()))}, r3.Vec{}
+	return r3.Dot(reflectedRay, hitRecord.normal) > 0, m.Albedo, ray{p: hitRecord.p, direction: r3.Add(reflectedRay, r3.Scale(correctedFuzz, randomInUnitSphere()))}, r3.Vec{}
 }
 
-func (d dielectric) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
+func (d Dielectric) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]Light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
 	outwardNormal := r3.Vec{}
 	niOverNt := 0.0
 	reflectProb := 0.0
@@ -51,17 +51,17 @@ func (d dielectric) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *bo
 	reflectedVec := reflected(&r.direction, &hitRecord.normal)
 	if r3.Dot(r.direction, hitRecord.normal) > 0 {
 		outwardNormal = r3.Scale(-1, hitRecord.normal)
-		niOverNt = d.refractiveIndex
-		cosine = d.refractiveIndex * r3.Dot(r3.Unit(r.direction), hitRecord.normal) / math.Sqrt(r.direction.X*r.direction.X+r.direction.Y*r.direction.Y+r.direction.Z*r.direction.Z)
+		niOverNt = d.RefractiveIndex
+		cosine = d.RefractiveIndex * r3.Dot(r3.Unit(r.direction), hitRecord.normal) / math.Sqrt(r.direction.X*r.direction.X+r.direction.Y*r.direction.Y+r.direction.Z*r.direction.Z)
 	} else {
 		outwardNormal = hitRecord.normal
-		niOverNt = 1.0 / d.refractiveIndex
+		niOverNt = 1.0 / d.RefractiveIndex
 		cosine = -1 * r3.Dot(r3.Unit(r.direction), hitRecord.normal) / math.Sqrt(r.direction.X*r.direction.X+r.direction.Y*r.direction.Y+r.direction.Z*r.direction.Z)
 	}
 
 	shouldRefract, refractedVec := refracted(&r.direction, &outwardNormal, niOverNt)
 	if shouldRefract {
-		reflectProb = schlick(cosine, d.refractiveIndex)
+		reflectProb = schlick(cosine, d.RefractiveIndex)
 	} else {
 		reflectProb = 1.0
 	}
@@ -74,7 +74,7 @@ func (d dielectric) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *bo
 }
 
 // see https://www.cs.uregina.ca/Links/class-info/315/WWW/Lab4/#Lighting
-func (p phongBlinn) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
+func (p PhongBlinn) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]Light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
 	c := r3.Vec{}
 	for _, light := range *lights {
 		if light.hasPosition() {
@@ -89,20 +89,20 @@ func (p phongBlinn) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *bo
 					lightDirection := r3.Unit(lightToPoint)
 					lightDistanceSqrd := lightToPoint.X*lightToPoint.X + lightToPoint.Y*lightToPoint.Y + lightToPoint.Z*lightToPoint.Z
 
-					// diffuse color merges lighting color and material color
+					// diffuse Color merges lighting Color and material Color
 					nDotL := r3.Dot(hitRecord.normal, lightDirection)
 					intensity := saturate(nDotL)
 					lightColor := light.getColorFrac()
 					diffuseColor := r3.Scale(
 						intensity*light.getLightIntensity()/lightDistanceSqrd,
-						r3.Unit(r3.Vec{X: p.color.X * lightColor.X, Y: p.color.Y * lightColor.Y, Z: p.color.Z * lightColor.Z}),
+						r3.Unit(r3.Vec{X: p.Color.X * lightColor.X, Y: p.Color.Y * lightColor.Y, Z: p.Color.Z * lightColor.Z}),
 					)
 
-					// specular color uses specular color of material
+					// specular Color uses specular Color of material
 					h := r3.Unit(r3.Add(lightDirection, r3.Unit(r.direction)))
 					nDotH := r3.Dot(hitRecord.normal, h)
-					specIntensity := math.Pow(saturate(nDotH), p.specHardness)
-					specularColor := r3.Scale(specIntensity*light.getSpecularLightIntensity()/lightDistanceSqrd, p.specularColor)
+					specIntensity := math.Pow(saturate(nDotH), p.SpecHardness)
+					specularColor := r3.Scale(specIntensity*light.getSpecularLightIntensity()/lightDistanceSqrd, p.SpecularColor)
 
 					combinedColor := r3.Vec{
 						X: math.Min(1.0, diffuseColor.X+specularColor.X),
@@ -113,8 +113,8 @@ func (p phongBlinn) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *bo
 				}
 			}
 		} else {
-			// ambient light merges lighting color and material color
-			c = r3.Add(c, r3.Scale(light.getLightIntensity(), r3.Unit(r3.Add(p.color, light.getColorFrac()))))
+			// ambient light merges lighting Color and material Color
+			c = r3.Add(c, r3.Scale(light.getLightIntensity(), r3.Unit(r3.Add(p.Color, light.getColorFrac()))))
 		}
 	}
 	c.X = math.Min(1.0, c.X)

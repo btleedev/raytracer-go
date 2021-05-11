@@ -5,7 +5,7 @@ import (
 	"math"
 )
 
-type light interface {
+type Light interface {
 	hasPosition() bool
 	getPosition() *r3.Vec
 	getColorFrac() r3.Vec
@@ -14,105 +14,105 @@ type light interface {
 	isPointVisible(point *r3.Vec, bvh *boundingVolumeHierarchy, monteCarloVariance *r3.Vec) bool
 }
 
-type ambientLight struct {
-	colorFrac      r3.Vec
-	lightIntensity float64
+type AmbientLight struct {
+	ColorFrac      r3.Vec
+	LightIntensity float64
 }
 
-type pointLight struct {
-	colorFrac              r3.Vec
-	position               r3.Vec
-	lightIntensity         float64
-	specularLightIntensity float64
+type PointLight struct {
+	ColorFrac              r3.Vec
+	Position               r3.Vec
+	LightIntensity         float64
+	SpecularLightIntensity float64
 }
 
-type spotLight struct {
-	colorFrac              r3.Vec
-	position               r3.Vec
-	lightIntensity         float64
-	specularLightIntensity float64
-	direction              r3.Vec
-	angle                  float64 // specified in degrees
+type SpotLight struct {
+	ColorFrac              r3.Vec
+	Position               r3.Vec
+	LightIntensity         float64
+	SpecularLightIntensity float64
+	Direction              r3.Vec
+	Angle                  float64 // specified in degrees
 }
 
-func (a ambientLight) hasPosition() bool {
+func (a AmbientLight) hasPosition() bool {
 	return false
 }
 
-func (a ambientLight) getPosition() *r3.Vec {
+func (a AmbientLight) getPosition() *r3.Vec {
 	return &r3.Vec{}
 }
 
-func (a ambientLight) getColorFrac() r3.Vec {
-	return a.colorFrac
+func (a AmbientLight) getColorFrac() r3.Vec {
+	return a.ColorFrac
 }
 
-func (a ambientLight) getLightIntensity() float64 {
-	return a.lightIntensity
+func (a AmbientLight) getLightIntensity() float64 {
+	return a.LightIntensity
 }
 
-func (a ambientLight) getSpecularLightIntensity() float64 {
+func (a AmbientLight) getSpecularLightIntensity() float64 {
 	return 0
 }
 
-func (a ambientLight) isPointVisible(point *r3.Vec, bvh *boundingVolumeHierarchy, monteCarloVariance *r3.Vec) bool {
+func (a AmbientLight) isPointVisible(point *r3.Vec, bvh *boundingVolumeHierarchy, monteCarloVariance *r3.Vec) bool {
 	return true
 }
 
-func (p pointLight) hasPosition() bool {
+func (p PointLight) hasPosition() bool {
 	return true
 }
 
-func (p pointLight) getPosition() *r3.Vec {
-	return &p.position
+func (p PointLight) getPosition() *r3.Vec {
+	return &p.Position
 }
 
-func (p pointLight) getColorFrac() r3.Vec {
-	return p.colorFrac
+func (p PointLight) getColorFrac() r3.Vec {
+	return p.ColorFrac
 }
 
-func (p pointLight) getLightIntensity() float64 {
-	return p.lightIntensity
+func (p PointLight) getLightIntensity() float64 {
+	return p.LightIntensity
 }
 
-func (p pointLight) getSpecularLightIntensity() float64 {
-	return p.specularLightIntensity
+func (p PointLight) getSpecularLightIntensity() float64 {
+	return p.SpecularLightIntensity
 }
 
-func (p pointLight) isPointVisible(point *r3.Vec, bvh *boundingVolumeHierarchy, monteCarloVariance *r3.Vec) bool {
-	shiftedPosition := r3.Add(p.position, *monteCarloVariance)
+func (p PointLight) isPointVisible(point *r3.Vec, bvh *boundingVolumeHierarchy, monteCarloVariance *r3.Vec) bool {
+	shiftedPosition := r3.Add(p.Position, *monteCarloVariance)
 	return doesReachLight(point, &shiftedPosition, bvh)
 }
 
-func (s spotLight) hasPosition() bool {
+func (s SpotLight) hasPosition() bool {
 	return true
 }
 
-func (s spotLight) getPosition() *r3.Vec {
-	return &s.position
+func (s SpotLight) getPosition() *r3.Vec {
+	return &s.Position
 }
 
-func (s spotLight) getColorFrac() r3.Vec {
-	return s.colorFrac
+func (s SpotLight) getColorFrac() r3.Vec {
+	return s.ColorFrac
 }
 
-func (s spotLight) getLightIntensity() float64 {
-	return s.lightIntensity
+func (s SpotLight) getLightIntensity() float64 {
+	return s.LightIntensity
 }
 
-func (s spotLight) getSpecularLightIntensity() float64 {
-	return s.specularLightIntensity
+func (s SpotLight) getSpecularLightIntensity() float64 {
+	return s.SpecularLightIntensity
 }
 
-func (s spotLight) isPointVisible(point *r3.Vec, bvh *boundingVolumeHierarchy, monteCarloVariance *r3.Vec) bool {
-	shiftedPosition := r3.Add(s.position, *monteCarloVariance)
+func (s SpotLight) isPointVisible(point *r3.Vec, bvh *boundingVolumeHierarchy, monteCarloVariance *r3.Vec) bool {
+	shiftedPosition := r3.Add(s.Position, *monteCarloVariance)
 	reachesLight := doesReachLight(point, &shiftedPosition, bvh)
 
 	// get angle between light direction vector and vector of light to point
-	lightDirection := r3.Unit(s.direction)
+	lightDirection := r3.Unit(s.Direction)
 	lightPositionToShape := r3.Unit(r3.Sub(*point, shiftedPosition))
 	angle := angleBetweenVectors(&lightDirection, &lightPositionToShape)
-	return reachesLight && angle <= s.angle
+	return reachesLight && angle <= s.Angle
 }
 
 // unit is in degrees

@@ -9,10 +9,10 @@ type hitRecord struct {
 	t        float64
 	p        r3.Vec
 	normal   r3.Vec
-	material material
+	material Material
 }
 
-type shape interface {
+type Shape interface {
 	hit(r *ray, tMin float64, tMax float64) hitRecord
 	translate(tv r3.Vec)
 	scale(c float64)
@@ -22,31 +22,25 @@ type shape interface {
 	centroid() r3.Vec
 }
 
-type sphere struct {
-	center r3.Vec
-	radius float64
-	mat    material
+type Sphere struct {
+	Center r3.Vec
+	Radius float64
+	Mat    Material
 }
 
-type triangle struct {
-	pointA      r3.Vec
-	pointB      r3.Vec
-	pointC      r3.Vec
-	singleSided bool
-	mat         material
+type Triangle struct {
+	PointA      r3.Vec
+	PointB      r3.Vec
+	PointC      r3.Vec
+	SingleSided bool
+	Mat         Material
 }
 
-type boundingBox struct {
-	pMin   r3.Vec
-	pMax   r3.Vec
-	shapes []shape
-}
-
-func (s sphere) hit(r *ray, tMin float64, tMax float64) hitRecord {
-	oc := r3.Sub(r.p, s.center)
+func (s Sphere) hit(r *ray, tMin float64, tMax float64) hitRecord {
+	oc := r3.Sub(r.p, s.Center)
 	a := r3.Dot(r.direction, r.direction)
 	b := r3.Dot(oc, r.direction)
-	c := r3.Dot(oc, oc) - s.radius*s.radius
+	c := r3.Dot(oc, oc) - s.Radius*s.Radius
 	discriminant := b*b - a*c
 	if discriminant > 0 {
 		firstPoint := (-b - math.Sqrt(b*b-a*c)) / a
@@ -54,8 +48,8 @@ func (s sphere) hit(r *ray, tMin float64, tMax float64) hitRecord {
 			return hitRecord{
 				t:        firstPoint,
 				p:        r.PointAtT(firstPoint),
-				normal:   r3.Scale(1/s.radius, r3.Sub(r.PointAtT(firstPoint), s.center)),
-				material: s.mat,
+				normal:   r3.Scale(1/s.Radius, r3.Sub(r.PointAtT(firstPoint), s.Center)),
+				material: s.Mat,
 			}
 		}
 		secondPoint := (-b - math.Sqrt(b*b-a*c)) / a
@@ -63,8 +57,8 @@ func (s sphere) hit(r *ray, tMin float64, tMax float64) hitRecord {
 			return hitRecord{
 				t:        secondPoint,
 				p:        r.PointAtT(secondPoint),
-				normal:   r3.Scale(1/s.radius, r3.Sub(r.PointAtT(secondPoint), s.center)),
-				material: s.mat,
+				normal:   r3.Scale(1/s.Radius, r3.Sub(r.PointAtT(secondPoint), s.Center)),
+				material: s.Mat,
 			}
 		}
 	}
@@ -73,35 +67,35 @@ func (s sphere) hit(r *ray, tMin float64, tMax float64) hitRecord {
 	}
 }
 
-func (s *sphere) translate(tv r3.Vec) {
-	s.center = r3.Add(tv, s.center)
+func (s *Sphere) translate(tv r3.Vec) {
+	s.Center = r3.Add(tv, s.Center)
 }
 
-func (s *sphere) scale(c float64) {
-	s.radius *= c
+func (s *Sphere) scale(c float64) {
+	s.Radius *= c
 }
 
-func (s *sphere) rotate(rv r3.Vec) {
+func (s *Sphere) rotate(rv r3.Vec) {
 }
 
-func (s sphere) computeSquareBounds() (lowest r3.Vec, highest r3.Vec) {
-	return r3.Sub(s.center, r3.Vec{X: s.radius, Y: s.radius, Z: s.radius}), r3.Add(s.center, r3.Vec{X: s.radius, Y: s.radius, Z: s.radius})
+func (s Sphere) computeSquareBounds() (lowest r3.Vec, highest r3.Vec) {
+	return r3.Sub(s.Center, r3.Vec{X: s.Radius, Y: s.Radius, Z: s.Radius}), r3.Add(s.Center, r3.Vec{X: s.Radius, Y: s.Radius, Z: s.Radius})
 }
 
-func (s sphere) centroid() r3.Vec {
-	return s.center
+func (s Sphere) centroid() r3.Vec {
+	return s.Center
 }
 
-func (tr triangle) hit(r *ray, tMin float64, tMax float64) hitRecord {
+func (tr Triangle) hit(r *ray, tMin float64, tMax float64) hitRecord {
 	// moller-trumbore ray triangle intersection algorithm
 	dir := r.direction
-	bMinusA := r3.Sub(tr.pointB, tr.pointA)
-	cMinusA := r3.Sub(tr.pointC, tr.pointA)
+	bMinusA := r3.Sub(tr.PointB, tr.PointA)
+	cMinusA := r3.Sub(tr.PointC, tr.PointA)
 	normal := r3.Unit(r3.Cross(bMinusA, cMinusA))
 	pvec := r3.Cross(dir, cMinusA)
 	det := r3.Dot(bMinusA, pvec)
 
-	if tr.singleSided {
+	if tr.SingleSided {
 		if det < 0.0 {
 			return hitRecord{t: -1}
 		}
@@ -114,7 +108,7 @@ func (tr triangle) hit(r *ray, tMin float64, tMax float64) hitRecord {
 
 	invDet := 1 / det
 
-	tvec := r3.Sub(r.p, tr.pointA)
+	tvec := r3.Sub(r.p, tr.PointA)
 	u := r3.Dot(tvec, pvec) * invDet
 	if u < 0 || u > 1 {
 		return hitRecord{t: -1}
@@ -135,56 +129,56 @@ func (tr triangle) hit(r *ray, tMin float64, tMax float64) hitRecord {
 		t:        t,
 		p:        r.PointAtT(t),
 		normal:   normal,
-		material: tr.mat,
+		material: tr.Mat,
 	}
 }
 
-func (t *triangle) translate(tv r3.Vec) {
-	t.pointA = r3.Add(tv, t.pointA)
-	t.pointB = r3.Add(tv, t.pointB)
-	t.pointC = r3.Add(tv, t.pointC)
+func (t *Triangle) translate(tv r3.Vec) {
+	t.PointA = r3.Add(tv, t.PointA)
+	t.PointB = r3.Add(tv, t.PointB)
+	t.PointC = r3.Add(tv, t.PointC)
 }
 
-func (t *triangle) scale(c float64) {
-	t.pointA = r3.Scale(c, t.pointA)
-	t.pointB = r3.Scale(c, t.pointB)
-	t.pointC = r3.Scale(c, t.pointC)
+func (t *Triangle) scale(c float64) {
+	t.PointA = r3.Scale(c, t.PointA)
+	t.PointB = r3.Scale(c, t.PointB)
+	t.PointC = r3.Scale(c, t.PointC)
 }
 
-func (t *triangle) rotate(rv r3.Vec) {
-	t.pointA = rotatePoint(t.pointA, rv)
-	t.pointB = rotatePoint(t.pointB, rv)
-	t.pointC = rotatePoint(t.pointC, rv)
+func (t *Triangle) rotate(rv r3.Vec) {
+	t.PointA = rotatePoint(t.PointA, rv)
+	t.PointB = rotatePoint(t.PointB, rv)
+	t.PointC = rotatePoint(t.PointC, rv)
 }
 
-func (tr triangle) computeSquareBounds() (lowest r3.Vec, highest r3.Vec) {
+func (tr Triangle) computeSquareBounds() (lowest r3.Vec, highest r3.Vec) {
 	pMin := r3.Vec{X: math.MaxFloat64, Y: math.MaxFloat64, Z: math.MaxFloat64}
 	pMax := r3.Vec{X: float64(math.MinInt64), Y: float64(math.MinInt64), Z: float64(math.MinInt64)}
 
-	pMin.X = math.Min(pMin.X, tr.pointA.X)
-	pMin.X = math.Min(pMin.X, tr.pointB.X)
-	pMin.X = math.Min(pMin.X, tr.pointC.X)
-	pMin.Y = math.Min(pMin.Y, tr.pointA.Y)
-	pMin.Y = math.Min(pMin.Y, tr.pointB.Y)
-	pMin.Y = math.Min(pMin.Y, tr.pointC.Y)
-	pMin.Z = math.Min(pMin.Z, tr.pointA.Z)
-	pMin.Z = math.Min(pMin.Z, tr.pointB.Z)
-	pMin.Z = math.Min(pMin.Z, tr.pointC.Z)
+	pMin.X = math.Min(pMin.X, tr.PointA.X)
+	pMin.X = math.Min(pMin.X, tr.PointB.X)
+	pMin.X = math.Min(pMin.X, tr.PointC.X)
+	pMin.Y = math.Min(pMin.Y, tr.PointA.Y)
+	pMin.Y = math.Min(pMin.Y, tr.PointB.Y)
+	pMin.Y = math.Min(pMin.Y, tr.PointC.Y)
+	pMin.Z = math.Min(pMin.Z, tr.PointA.Z)
+	pMin.Z = math.Min(pMin.Z, tr.PointB.Z)
+	pMin.Z = math.Min(pMin.Z, tr.PointC.Z)
 
-	pMax.X = math.Max(pMax.X, tr.pointA.X)
-	pMax.X = math.Max(pMax.X, tr.pointB.X)
-	pMax.X = math.Max(pMax.X, tr.pointC.X)
-	pMax.Y = math.Max(pMax.Y, tr.pointA.Y)
-	pMax.Y = math.Max(pMax.Y, tr.pointB.Y)
-	pMax.Y = math.Max(pMax.Y, tr.pointC.Y)
-	pMax.Z = math.Max(pMax.Z, tr.pointA.Z)
-	pMax.Z = math.Max(pMax.Z, tr.pointB.Z)
-	pMax.Z = math.Max(pMax.Z, tr.pointC.Z)
+	pMax.X = math.Max(pMax.X, tr.PointA.X)
+	pMax.X = math.Max(pMax.X, tr.PointB.X)
+	pMax.X = math.Max(pMax.X, tr.PointC.X)
+	pMax.Y = math.Max(pMax.Y, tr.PointA.Y)
+	pMax.Y = math.Max(pMax.Y, tr.PointB.Y)
+	pMax.Y = math.Max(pMax.Y, tr.PointC.Y)
+	pMax.Z = math.Max(pMax.Z, tr.PointA.Z)
+	pMax.Z = math.Max(pMax.Z, tr.PointB.Z)
+	pMax.Z = math.Max(pMax.Z, tr.PointC.Z)
 	return pMin, pMax
 }
 
-func (tr triangle) centroid() r3.Vec {
-	return r3.Scale(1/3.0, r3.Add(tr.pointA, r3.Add(tr.pointB, tr.pointC)))
+func (tr Triangle) centroid() r3.Vec {
+	return r3.Scale(1/3.0, r3.Add(tr.PointA, r3.Add(tr.PointB, tr.PointC)))
 }
 
 func rotatePoint(point r3.Vec, rv r3.Vec) r3.Vec {
