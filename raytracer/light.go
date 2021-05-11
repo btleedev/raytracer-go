@@ -10,6 +10,7 @@ type light interface {
 	getPosition() *r3.Vec
 	getColorFrac() r3.Vec
 	getLightIntensity() float64
+	getSpecularLightIntensity() float64
 	isPointVisible(point *r3.Vec, bvh *boundingVolumeHierarchy, monteCarloVariance *r3.Vec) bool
 }
 
@@ -19,18 +20,19 @@ type ambientLight struct {
 }
 
 type pointLight struct {
-	colorFrac      r3.Vec
-	position       r3.Vec
-	lightIntensity float64
+	colorFrac              r3.Vec
+	position               r3.Vec
+	lightIntensity         float64
+	specularLightIntensity float64
 }
 
 type spotLight struct {
-	colorFrac      r3.Vec
-	position       r3.Vec
-	lightIntensity float64
-	direction      r3.Vec
-	// specified in degrees
-	angle float64
+	colorFrac              r3.Vec
+	position               r3.Vec
+	lightIntensity         float64
+	specularLightIntensity float64
+	direction              r3.Vec
+	angle                  float64 // specified in degrees
 }
 
 func (a ambientLight) hasPosition() bool {
@@ -47,6 +49,10 @@ func (a ambientLight) getColorFrac() r3.Vec {
 
 func (a ambientLight) getLightIntensity() float64 {
 	return a.lightIntensity
+}
+
+func (a ambientLight) getSpecularLightIntensity() float64 {
+	return 0
 }
 
 func (a ambientLight) isPointVisible(point *r3.Vec, bvh *boundingVolumeHierarchy, monteCarloVariance *r3.Vec) bool {
@@ -69,6 +75,10 @@ func (p pointLight) getLightIntensity() float64 {
 	return p.lightIntensity
 }
 
+func (p pointLight) getSpecularLightIntensity() float64 {
+	return p.specularLightIntensity
+}
+
 func (p pointLight) isPointVisible(point *r3.Vec, bvh *boundingVolumeHierarchy, monteCarloVariance *r3.Vec) bool {
 	shiftedPosition := r3.Add(p.position, *monteCarloVariance)
 	return doesReachLight(point, &shiftedPosition, bvh)
@@ -88,6 +98,10 @@ func (s spotLight) getColorFrac() r3.Vec {
 
 func (s spotLight) getLightIntensity() float64 {
 	return s.lightIntensity
+}
+
+func (s spotLight) getSpecularLightIntensity() float64 {
+	return s.specularLightIntensity
 }
 
 func (s spotLight) isPointVisible(point *r3.Vec, bvh *boundingVolumeHierarchy, monteCarloVariance *r3.Vec) bool {
@@ -112,11 +126,12 @@ func angleBetweenVectors(a, b *r3.Vec) float64 {
 func doesReachLight(origin *r3.Vec, lightPosition *r3.Vec, bvh *boundingVolumeHierarchy) bool {
 	lightDirection := r3.Sub(*lightPosition, *origin)
 	unitLightDirection := r3.Unit(lightDirection)
+	r := ray{
+		p:         *origin,
+		direction: unitLightDirection,
+	}
 	hit, hitRecord := bvh.trace(
-		&ray{
-			p:         *origin,
-			direction: unitLightDirection,
-		},
+		&r,
 		0.01, // don't let the shadow ray hit the same object
 	)
 	if !hit {

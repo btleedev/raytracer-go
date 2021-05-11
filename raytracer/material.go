@@ -10,7 +10,7 @@ type material interface {
 	scatter(r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec)
 }
 
-type diffuse struct {
+type standard struct {
 	color r3.Vec
 }
 
@@ -24,12 +24,12 @@ type dielectric struct {
 }
 
 type phongBlinn struct {
-	specValue     float64
-	specShininess float64
 	color         r3.Vec
+	specularColor r3.Vec
+	specHardness  float64
 }
 
-func (d diffuse) scatter(r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
+func (d standard) scatter(r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
 	return false, r3.Vec{}, ray{p: hitRecord.p, direction: r3.Vec{}}, d.color
 }
 
@@ -73,6 +73,7 @@ func (d dielectric) scatter(r *ray, hitRecord *hitRecord, bvh *boundingVolumeHie
 	}
 }
 
+// see https://www.cs.uregina.ca/Links/class-info/315/WWW/Lab4/#Lighting
 func (p phongBlinn) scatter(r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
 	c := r3.Vec{}
 	for _, light := range *lights {
@@ -87,19 +88,33 @@ func (p phongBlinn) scatter(r *ray, hitRecord *hitRecord, bvh *boundingVolumeHie
 					lightToPoint := r3.Sub(lightPosition, hitPoint)
 					lightDirection := r3.Unit(lightToPoint)
 					lightDistanceSqrd := lightToPoint.X*lightToPoint.X + lightToPoint.Y*lightToPoint.Y + lightToPoint.Z*lightToPoint.Z
-					viewDirection := r3.Unit(r3.Sub(r.p, hitPoint))
-					blinnDirection := r3.Unit(r3.Add(lightDirection, viewDirection))
-					blinnTerm := math.Max(r3.Dot(r3.Unit(hitRecord.normal), blinnDirection), 0.0)
-					phongTerm := light.getLightIntensity() * p.specValue * math.Pow(blinnTerm, p.specShininess) / lightDistanceSqrd
-					lambertTerm := light.getLightIntensity() * math.Max(0.0, r3.Dot(lightDirection, r3.Unit(hitRecord.normal))) / lightDistanceSqrd
 
-					c = r3.Add(c, r3.Scale(1/float64(monteCarloRepetitions), r3.Scale(phongTerm, light.getColorFrac())))
-					c = r3.Add(c, r3.Scale(1/float64(monteCarloRepetitions), r3.Scale(lambertTerm, p.color)))
+					// diffuse color merges lighting color and material color
+					nDotL := r3.Dot(hitRecord.normal, lightDirection)
+					intensity := saturate(nDotL)
+					lightColor := light.getColorFrac()
+					diffuseColor := r3.Scale(
+						intensity*light.getLightIntensity()/lightDistanceSqrd,
+						r3.Unit(r3.Vec{X: p.color.X * lightColor.X, Y: p.color.Y * lightColor.Y, Z: p.color.Z * lightColor.Z}),
+					)
+
+					// specular color uses specular color of material
+					h := r3.Unit(r3.Add(lightDirection, r3.Unit(r.direction)))
+					nDotH := r3.Dot(hitRecord.normal, h)
+					specIntensity := math.Pow(saturate(nDotH), p.specHardness)
+					specularColor := r3.Scale(specIntensity*light.getSpecularLightIntensity()/lightDistanceSqrd, p.specularColor)
+
+					combinedColor := r3.Vec{
+						X: math.Min(1.0, diffuseColor.X+specularColor.X),
+						Y: math.Min(1.0, diffuseColor.Y+specularColor.Y),
+						Z: math.Min(1.0, diffuseColor.Z+specularColor.Z),
+					}
+					c = r3.Add(c, r3.Scale(1/float64(monteCarloRepetitions), combinedColor))
 				}
 			}
 		} else {
-			// treat as ambient light - no position so we assume it can reach us
-			c = r3.Add(c, r3.Scale(light.getLightIntensity(), light.getColorFrac()))
+			// ambient light merges lighting color and material color
+			c = r3.Add(c, r3.Scale(light.getLightIntensity(), r3.Unit(r3.Add(p.color, light.getColorFrac()))))
 		}
 	}
 	c.X = math.Min(1.0, c.X)
@@ -138,4 +153,15 @@ func schlick(cosine float64, refractiveIndex float64) float64 {
 	r0 := (1 - refractiveIndex) / (1 + refractiveIndex)
 	r0 = r0 * r0
 	return r0 + (1-r0)*math.Pow(1-cosine, 5)
+}
+
+// keeps integer between 0-1 inclusive
+func saturate(i float64) float64 {
+	if i > 1 {
+		return 1
+	}
+	if i < 0 {
+		return 0
+	}
+	return i
 }

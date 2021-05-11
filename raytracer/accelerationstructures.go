@@ -1,6 +1,7 @@
 package raytracer
 
 import (
+	"container/heap"
 	"fmt"
 	"gonum.org/v1/gonum/spatial/r3"
 	"math"
@@ -16,8 +17,9 @@ type boundingVolumeHierarchyNode struct {
 }
 
 type boundingVolumeHierarchy struct {
-	root   boundingVolumeHierarchyNode
-	shapes *[]shape
+	root    boundingVolumeHierarchyNode
+	extents []r3.Vec
+	shapes  *[]shape
 }
 
 // bounding box hierarchy where boundaries are computed in a box shape
@@ -59,13 +61,61 @@ func NewBoundingVolumeHierarchy(shapes *[]shape) *boundingVolumeHierarchy {
 	return &bvh
 }
 
+func (bvh boundingVolumeHierarchy) traceRecursive(r *ray, tMin float64) (hit bool, record *hitRecord) {
+	return traceDownBoundingVolumeHierarchyNode(r, tMin, math.MaxFloat64, &bvh.root)
+}
+
 func (bvh boundingVolumeHierarchy) trace(r *ray, tMin float64) (hit bool, record *hitRecord) {
+	minHeap := make(bvhPriorityQueue, 0)
+	minHeap.Push(&Item{
+		value:    &bvh.root,
+		priority: 0,
+	})
+	heap.Init(&minHeap)
+	hr := hitRecord{t: math.MaxFloat64}
+	for minHeap.Len() > 0 {
+		item := minHeap.Pop().(*Item)
+		node := item.value
+
+		// no need to explore further if all bounding boxes are further than hit object
+		if item.priority >= hr.t {
+			break
+		}
+
+		if node.leaf {
+			if node.shape != nil {
+				shapeHr := (*node.shape).hit(r, tMin, hr.t)
+				if shapeHr.t > 0.0 && shapeHr.t < hr.t {
+					hr = shapeHr
+				}
+			}
+		} else {
+			if node.children != nil {
+				for _, v := range node.children {
+					didHit, tNear, tFar := hitBoundingBox(r, v.pMin, v.pMax, tMin, hr.t)
+					if didHit {
+						// priority is closest distance to ray, except negative distances since they're in the opposite direction
+						tPriority := tNear
+						if tNear < 0 {
+							tPriority = tFar
+						}
+
+						heap.Push(&minHeap, &Item{
+							value:    v,
+							priority: tPriority,
+						})
+					}
+				}
+			}
+		}
+	}
+
 	return traceDownBoundingVolumeHierarchyNode(r, tMin, math.MaxFloat64, &bvh.root)
 }
 
 // traces a ray and returns if it hits something, and a hit record
 func traceDownBoundingVolumeHierarchyNode(r *ray, tMin float64, tMax float64, node *boundingVolumeHierarchyNode) (hit bool, record *hitRecord) {
-	if !hitBoundingBox(r, node.pMin, node.pMax, tMin, tMax) {
+	if didHit, _, _ := hitBoundingBox(r, node.pMin, node.pMax, tMin, tMax); !didHit {
 		return false, &hitRecord{t: -1}
 	}
 
@@ -244,7 +294,7 @@ func splitBvhQuadrant(lowestBounds *r3.Vec, highestBounds *r3.Vec) []*boundingVo
 }
 
 // determines whether the ray hits the bounding box
-func hitBoundingBox(r *ray, pMin r3.Vec, pMax r3.Vec, tMin float64, tMax float64) bool {
+func hitBoundingBox(r *ray, pMin r3.Vec, pMax r3.Vec, tMin float64, tMax float64) (hit bool, tNear float64, tFar float64) {
 	normalizedDir := r3.Unit(r.direction)
 	invDirection := r3.Vec{
 		X: 1 / normalizedDir.X,
@@ -273,7 +323,7 @@ func hitBoundingBox(r *ray, pMin r3.Vec, pMax r3.Vec, tMin float64, tMax float64
 	tYMax := (bounds1.Y - r.p.Y) * invDirection.Y
 
 	if ptMin > tYMax || tYMin > ptMax {
-		return false
+		return false, -1, -1
 	}
 
 	if tYMin > ptMin {
@@ -287,7 +337,7 @@ func hitBoundingBox(r *ray, pMin r3.Vec, pMax r3.Vec, tMin float64, tMax float64
 	tZMax := (bounds1.Z - r.p.Z) * invDirection.Z
 
 	if (ptMin > tZMax) || (ptMax < tZMin) {
-		return false
+		return false, -1, -1
 	}
 
 	if tZMin > ptMin {
@@ -297,10 +347,9 @@ func hitBoundingBox(r *ray, pMin r3.Vec, pMax r3.Vec, tMin float64, tMax float64
 		ptMax = tZMax
 	}
 
-	tHit := tMin
-	if tHit < tMin || tHit > tMax {
-		return false
+	if ptMax < tMin || ptMin > tMax {
+		return false, -1, -1
 	}
 
-	return true
+	return true, ptMin, ptMax
 }

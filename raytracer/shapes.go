@@ -85,7 +85,7 @@ func (s *sphere) rotate(rv r3.Vec) {
 }
 
 func (s sphere) computeSquareBounds() (lowest r3.Vec, highest r3.Vec) {
-	panic("implement me")
+	return r3.Sub(s.center, r3.Vec{X: s.radius, Y: s.radius, Z: s.radius}), r3.Add(s.center, r3.Vec{X: s.radius, Y: s.radius, Z: s.radius})
 }
 
 func (s sphere) centroid() r3.Vec {
@@ -93,64 +93,47 @@ func (s sphere) centroid() r3.Vec {
 }
 
 func (tr triangle) hit(r *ray, tMin float64, tMax float64) hitRecord {
+	// moller-trumbore ray triangle intersection algorithm
+	dir := r.direction
 	bMinusA := r3.Sub(tr.pointB, tr.pointA)
 	cMinusA := r3.Sub(tr.pointC, tr.pointA)
 	normal := r3.Unit(r3.Cross(bMinusA, cMinusA))
-	// area := math.Sqrt(normal.X*normal.X + normal.Y*normal.Y + normal.Z*normal.Z)
+	pvec := r3.Cross(dir, cMinusA)
+	det := r3.Dot(bMinusA, pvec)
 
-	// check if ray and plane are parallel
-	nDotRayDirection := r3.Dot(normal, r.direction)
-	if math.Abs(nDotRayDirection) < 0.00001 {
+	if tr.singleSided {
+		if det < 0.0 {
+			return hitRecord{t: -1}
+		}
+	} else {
+		// check for parallelism
+		if math.Abs(det) < 0.0 {
+			return hitRecord{t: -1}
+		}
+	}
+
+	invDet := 1 / det
+
+	tvec := r3.Sub(r.p, tr.pointA)
+	u := r3.Dot(tvec, pvec) * invDet
+	if u < 0 || u > 1 {
 		return hitRecord{t: -1}
 	}
-	// check for backward facing triangle
-	if tr.singleSided && r3.Dot(r.direction, normal) > 0 {
+
+	qvec := r3.Cross(tvec, bMinusA)
+	v := r3.Dot(dir, qvec) * invDet
+	if v < 0 || u+v > 1 {
 		return hitRecord{t: -1}
 	}
 
-	// compute d parameter in plane equation
-	d := r3.Dot(normal, tr.pointA)
-
-	// compute t
-	t := (d - r3.Dot(normal, r.p)) / nDotRayDirection
-	// check if the triangle is in behind the ray
+	t := r3.Dot(cMinusA, qvec) * invDet
 	if t < tMin || t > tMax {
 		return hitRecord{t: -1}
 	}
 
-	// compute the intersection point using ray equation
-	p := r.PointAtT(t)
-
-	// Step 2: inside-outside test
-	var c r3.Vec // vector perpendicular to triangle's plane
-
-	// edge 0
-	edge0 := r3.Sub(tr.pointB, tr.pointA)
-	vp0 := r3.Sub(p, tr.pointA)
-	c = r3.Cross(edge0, vp0)
-	if r3.Dot(normal, c) < 0 {
-		return hitRecord{t: -1} // p is on the right side
-	}
-
-	// edge 1
-	edge1 := r3.Sub(tr.pointC, tr.pointB)
-	vp1 := r3.Sub(p, tr.pointB)
-	c = r3.Cross(edge1, vp1)
-	if r3.Dot(normal, c) < 0 {
-		return hitRecord{t: -1} // p is on the right side
-	}
-
-	// edge 2
-	edge2 := r3.Sub(tr.pointA, tr.pointC)
-	vp2 := r3.Sub(p, tr.pointC)
-	c = r3.Cross(edge2, vp2)
-	if r3.Dot(normal, c) < 0 {
-		return hitRecord{t: -1} // p is on the right side
-	}
-
 	return hitRecord{
 		t:        t,
-		p:        p,
+		p:        r.PointAtT(t),
 		normal:   normal,
 		material: tr.mat,
 	}

@@ -16,7 +16,7 @@ Ray tracer written in golang.
 
 # Materials
 
-* Diffuse
+* Standard
 * Metal
 * Dielectric
 * Phong-Blinn

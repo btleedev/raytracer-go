@@ -7,6 +7,7 @@ import (
 	"image/png"
 	"math/rand"
 	"os"
+	"time"
 )
 
 const antiAliasingFactor = 32
@@ -41,7 +42,7 @@ func GenerateImage() {
 		imageHeight,
 		antiAliasingFactor,
 	}
-	theScene := koala(imageSpec)
+	theScene := sample(imageSpec)
 	bvh := NewBoundingVolumeHierarchy(theScene.shapes)
 	myImage := image.NewRGBA(image.Rect(0, 0, imageSpec.width, imageSpec.height))
 	jobs := make(chan raytraceJob, imageSpec.height*imageSpec.width)
@@ -51,6 +52,7 @@ func GenerateImage() {
 		go computePixel(i, &imageSpec, theScene.camera, bvh, theScene.lights, jobs, results)
 	}
 
+	startTime := time.Now()
 	for j := imageSpec.height - 1; j >= 0; j-- {
 		for i := 0; i < imageSpec.width; i++ {
 			jobs <- raytraceJob{
@@ -72,7 +74,7 @@ func GenerateImage() {
 
 			count++
 			if count%1000 == 0 {
-				fmt.Printf("%.2f%% pixels rendered\n", float64(count)/float64(imageSpec.height*imageSpec.width)*100.0)
+				fmt.Printf("%.2f%% pixels rendered, %s\n", float64(count)/float64(imageSpec.height*imageSpec.width)*100.0, time.Since(startTime).String())
 			}
 		}
 	}
@@ -83,6 +85,8 @@ func GenerateImage() {
 	}
 	defer outputFile.Close()
 	png.Encode(outputFile, myImage)
+
+	fmt.Printf("Finished ray tracing in %s\n", time.Since(startTime).String())
 }
 
 func computePixel(id int, scene *imageSpec, camera *camera, bvh *boundingVolumeHierarchy, lights *[]light, jobs <-chan raytraceJob, results chan<- raytraceResult) {
