@@ -28,7 +28,7 @@ type Sphere struct {
 	Mat    Material
 }
 
-type Triangle struct {
+type TrianglePlane struct {
 	PointA      r3.Vec
 	PointB      r3.Vec
 	PointC      r3.Vec
@@ -86,7 +86,7 @@ func (s Sphere) centroid() r3.Vec {
 	return s.Center
 }
 
-func (tr Triangle) hit(r *ray, tMin float64, tMax float64) hitRecord {
+func (tr TrianglePlane) hit(r *ray, tMin float64, tMax float64) hitRecord {
 	// moller-trumbore ray triangle intersection algorithm
 	dir := r.direction
 	bMinusA := r3.Sub(tr.PointB, tr.PointA)
@@ -133,25 +133,25 @@ func (tr Triangle) hit(r *ray, tMin float64, tMax float64) hitRecord {
 	}
 }
 
-func (t *Triangle) translate(tv r3.Vec) {
+func (t *TrianglePlane) translate(tv r3.Vec) {
 	t.PointA = r3.Add(tv, t.PointA)
 	t.PointB = r3.Add(tv, t.PointB)
 	t.PointC = r3.Add(tv, t.PointC)
 }
 
-func (t *Triangle) scale(c float64) {
+func (t *TrianglePlane) scale(c float64) {
 	t.PointA = r3.Scale(c, t.PointA)
 	t.PointB = r3.Scale(c, t.PointB)
 	t.PointC = r3.Scale(c, t.PointC)
 }
 
-func (t *Triangle) rotate(rv r3.Vec) {
+func (t *TrianglePlane) rotate(rv r3.Vec) {
 	t.PointA = rotatePoint(t.PointA, rv)
 	t.PointB = rotatePoint(t.PointB, rv)
 	t.PointC = rotatePoint(t.PointC, rv)
 }
 
-func (tr Triangle) computeSquareBounds() (lowest r3.Vec, highest r3.Vec) {
+func (tr TrianglePlane) computeSquareBounds() (lowest r3.Vec, highest r3.Vec) {
 	pMin := r3.Vec{X: math.MaxFloat64, Y: math.MaxFloat64, Z: math.MaxFloat64}
 	pMax := r3.Vec{X: float64(math.MinInt64), Y: float64(math.MinInt64), Z: float64(math.MinInt64)}
 
@@ -177,7 +177,7 @@ func (tr Triangle) computeSquareBounds() (lowest r3.Vec, highest r3.Vec) {
 	return pMin, pMax
 }
 
-func (tr Triangle) centroid() r3.Vec {
+func (tr TrianglePlane) centroid() r3.Vec {
 	return r3.Scale(1/3.0, r3.Add(tr.PointA, r3.Add(tr.PointB, tr.PointC)))
 }
 

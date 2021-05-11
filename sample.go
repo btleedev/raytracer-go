@@ -25,7 +25,7 @@ func sample() (cameraLookFrom r3.Vec, cameraLookAt r3.Vec, cameraUp r3.Vec, came
 				Color:         r3.Vec{X: rand.Float64(), Y: rand.Float64(), Z: rand.Float64()},
 			},
 		},
-		&raytracer.Triangle{
+		&raytracer.TrianglePlane{
 			PointA:      r3.Vec{X: 2 * radius / 3, Y: -radius + 0.01, Z: 2 * radius / 3},
 			PointB:      r3.Vec{X: 2 * radius / 3, Y: -radius + 0.01, Z: -2 * radius / 3},
 			PointC:      r3.Vec{X: -2 * radius / 3, Y: -radius + 0.01, Z: -2 * radius / 3},
@@ -35,7 +35,7 @@ func sample() (cameraLookFrom r3.Vec, cameraLookAt r3.Vec, cameraUp r3.Vec, came
 				Fuzz:   0,
 			},
 		},
-		&raytracer.Triangle{
+		&raytracer.TrianglePlane{
 			PointA:      r3.Vec{X: 2 * radius / 3, Y: -radius + 0.01, Z: 2 * radius / 3},
 			PointB:      r3.Vec{X: -2 * radius / 3, Y: -radius + 0.01, Z: -2 * radius / 3},
 			PointC:      r3.Vec{X: -2 * radius / 3, Y: -radius + 0.01, Z: 2 * radius / 3},
@@ -80,28 +80,28 @@ func sample() (cameraLookFrom r3.Vec, cameraLookAt r3.Vec, cameraUp r3.Vec, came
 
 func floorRoof(yCoordFloor, yCoordRoof, radius float64, mat raytracer.Material) []raytracer.Shape {
 	return []raytracer.Shape{
-		&raytracer.Triangle{
+		&raytracer.TrianglePlane{
 			PointA:      r3.Vec{X: radius, Y: yCoordFloor, Z: radius},
 			PointB:      r3.Vec{X: radius, Y: yCoordFloor, Z: -radius},
 			PointC:      r3.Vec{X: -radius, Y: yCoordFloor, Z: radius},
 			SingleSided: true,
 			Mat:         mat,
 		},
-		&raytracer.Triangle{
+		&raytracer.TrianglePlane{
 			PointA:      r3.Vec{X: -radius, Y: yCoordFloor, Z: -radius},
 			PointB:      r3.Vec{X: -radius, Y: yCoordFloor, Z: radius},
 			PointC:      r3.Vec{X: radius, Y: yCoordFloor, Z: -radius},
 			SingleSided: true,
 			Mat:         mat,
 		},
-		&raytracer.Triangle{
+		&raytracer.TrianglePlane{
 			PointA:      r3.Vec{X: radius, Y: yCoordRoof, Z: radius},
 			PointB:      r3.Vec{X: -radius, Y: yCoordRoof, Z: radius},
 			PointC:      r3.Vec{X: radius, Y: yCoordRoof, Z: -radius},
 			SingleSided: true,
 			Mat:         mat,
 		},
-		&raytracer.Triangle{
+		&raytracer.TrianglePlane{
 			PointA:      r3.Vec{X: -radius, Y: yCoordRoof, Z: -radius},
 			PointB:      r3.Vec{X: radius, Y: yCoordRoof, Z: -radius},
 			PointC:      r3.Vec{X: -radius, Y: yCoordRoof, Z: radius},
@@ -115,14 +115,14 @@ func walls(radius float64, mat raytracer.Material, front, back, left, right bool
 	shapes := make([]raytracer.Shape, 0, 8)
 	if front {
 		shapes = append(shapes, []raytracer.Shape{
-			&raytracer.Triangle{
+			&raytracer.TrianglePlane{
 				PointA:      r3.Vec{X: radius, Y: radius, Z: radius},
 				PointB:      r3.Vec{X: radius, Y: -radius, Z: radius},
 				PointC:      r3.Vec{X: -radius, Y: radius, Z: radius},
 				SingleSided: true,
 				Mat:         mat,
 			},
-			&raytracer.Triangle{
+			&raytracer.TrianglePlane{
 				PointA:      r3.Vec{X: -radius, Y: -radius, Z: radius},
 				PointB:      r3.Vec{X: -radius, Y: radius, Z: radius},
 				PointC:      r3.Vec{X: radius, Y: -radius, Z: radius},
@@ -133,14 +133,14 @@ func walls(radius float64, mat raytracer.Material, front, back, left, right bool
 	}
 	if back {
 		shapes = append(shapes, []raytracer.Shape{
-			&raytracer.Triangle{
+			&raytracer.TrianglePlane{
 				PointA:      r3.Vec{X: radius, Y: radius, Z: -radius},
 				PointB:      r3.Vec{X: -radius, Y: radius, Z: -radius},
 				PointC:      r3.Vec{X: radius, Y: -radius, Z: -radius},
 				SingleSided: true,
 				Mat:         mat,
 			},
-			&raytracer.Triangle{
+			&raytracer.TrianglePlane{
 				PointA:      r3.Vec{X: -radius, Y: -radius, Z: -radius},
 				PointB:      r3.Vec{X: radius, Y: -radius, Z: -radius},
 				PointC:      r3.Vec{X: -radius, Y: radius, Z: -radius},
@@ -151,14 +151,14 @@ func walls(radius float64, mat raytracer.Material, front, back, left, right bool
 	}
 	if left {
 		shapes = append(shapes, []raytracer.Shape{
-			&raytracer.Triangle{
+			&raytracer.TrianglePlane{
 				PointA:      r3.Vec{X: radius, Y: radius, Z: radius},
 				PointB:      r3.Vec{X: radius, Y: radius, Z: -radius},
 				PointC:      r3.Vec{X: radius, Y: -radius, Z: radius},
 				SingleSided: true,
 				Mat:         mat,
 			},
-			&raytracer.Triangle{
+			&raytracer.TrianglePlane{
 				PointA:      r3.Vec{X: radius, Y: -radius, Z: -radius},
 				PointB:      r3.Vec{X: radius, Y: -radius, Z: radius},
 				PointC:      r3.Vec{X: radius, Y: radius, Z: -radius},
@@ -169,14 +169,14 @@ func walls(radius float64, mat raytracer.Material, front, back, left, right bool
 	}
 	if right {
 		shapes = append(shapes, []raytracer.Shape{
-			&raytracer.Triangle{
+			&raytracer.TrianglePlane{
 				PointA:      r3.Vec{X: -radius, Y: radius, Z: radius},
 				PointB:      r3.Vec{X: -radius, Y: -radius, Z: radius},
 				PointC:      r3.Vec{X: -radius, Y: radius, Z: -radius},
 				SingleSided: true,
 				Mat:         mat,
 			},
-			&raytracer.Triangle{
+			&raytracer.TrianglePlane{
 				PointA:      r3.Vec{X: -radius, Y: -radius, Z: -radius},
 				PointB:      r3.Vec{X: -radius, Y: radius, Z: -radius},
 				PointC:      r3.Vec{X: -radius, Y: -radius, Z: radius},
@@ -219,7 +219,7 @@ func fromStlFile(stlFileName string, mutator func(shape *raytracer.Shape)) []ray
 	pMax := pMaxDefault
 	shapes := make([]raytracer.Shape, 0, len(stlFile.Triangles))
 	for i, stlTriangle := range stlFile.Triangles {
-		s := raytracer.Triangle{
+		s := raytracer.TrianglePlane{
 			PointA:      r3.Vec{X: float64(stlTriangle.Vertices[0][0]), Y: float64(stlTriangle.Vertices[0][1]), Z: float64(stlTriangle.Vertices[0][2])},
 			PointB:      r3.Vec{X: float64(stlTriangle.Vertices[1][0]), Y: float64(stlTriangle.Vertices[1][1]), Z: float64(stlTriangle.Vertices[1][2])},
 			PointC:      r3.Vec{X: float64(stlTriangle.Vertices[2][0]), Y: float64(stlTriangle.Vertices[2][1]), Z: float64(stlTriangle.Vertices[2][2])},
