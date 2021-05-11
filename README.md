@@ -23,22 +23,22 @@ Ray tracer written in golang.
         },
     }
     lights := []raytracer.Light{
-		raytracer.AmbientLight{
-			ColorFrac: r3.Vec{
-				X: 1,
-				Y: 1,
-				Z: 1,
-			},
-			LightIntensity: 0.5,
-		},
+        raytracer.AmbientLight{
+            ColorFrac: r3.Vec{
+                X: 1,
+                Y: 1,
+                Z: 1,
+            },
+            LightIntensity: 0.5,
+        },
         raytracer.PointLight{
             ColorFrac: r3.Vec{
                 X: 255 / 255.0,
                 Y: 255 / 255.0,
                 Z: 255 / 255.0,
             },
-			LightIntensity:         1,
-			SpecularLightIntensity: 10,
+            LightIntensity:         1,
+            SpecularLightIntensity: 10,
             Position: r3.Vec{
                 X: 3,
                 Y: 3,
