@@ -7,7 +7,7 @@ import (
 )
 
 type material interface {
-	scatter(r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec)
+	scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec)
 }
 
 type standard struct {
@@ -29,11 +29,11 @@ type phongBlinn struct {
 	specHardness  float64
 }
 
-func (d standard) scatter(r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
+func (d standard) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
 	return false, r3.Vec{}, ray{p: hitRecord.p, direction: r3.Vec{}}, d.color
 }
 
-func (m metal) scatter(r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
+func (m metal) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
 	correctedFuzz := 1.0
 	if m.fuzz < 1.0 {
 		correctedFuzz = m.fuzz
@@ -43,7 +43,7 @@ func (m metal) scatter(r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarch
 	return r3.Dot(reflectedRay, hitRecord.normal) > 0, m.albedo, ray{p: hitRecord.p, direction: r3.Add(reflectedRay, r3.Scale(correctedFuzz, randomInUnitSphere()))}, r3.Vec{}
 }
 
-func (d dielectric) scatter(r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
+func (d dielectric) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
 	outwardNormal := r3.Vec{}
 	niOverNt := 0.0
 	reflectProb := 0.0
@@ -74,11 +74,11 @@ func (d dielectric) scatter(r *ray, hitRecord *hitRecord, bvh *boundingVolumeHie
 }
 
 // see https://www.cs.uregina.ca/Links/class-info/315/WWW/Lab4/#Lighting
-func (p phongBlinn) scatter(r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
+func (p phongBlinn) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
 	c := r3.Vec{}
 	for _, light := range *lights {
 		if light.hasPosition() {
-			monteCarloRepetitions := softShadowMonteCarloRepetitions
+			monteCarloRepetitions := is.SoftShadowMonteCarloRepetitions
 			monteCarloMaxLength := softShadowMonteCarloMaxLengthDeviation
 			for i := 0; i < monteCarloRepetitions; i++ {
 				hitPoint := hitRecord.p

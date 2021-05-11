@@ -15,7 +15,7 @@ type scene struct {
 	lights *[]light
 }
 
-func sample(is imageSpec) scene {
+func sample(is ImageSpec) scene {
 	radius := 20.0
 	lookFrom := r3.Vec{X: 0, Y: 0, Z: -3 * radius}
 	lookAt := r3.Vec{X: 0, Y: 0, Z: 0}
@@ -24,9 +24,9 @@ func sample(is imageSpec) scene {
 		lookFrom,
 		lookAt,
 		r3.Vec{X: 0, Y: 1, Z: 0},
-		cameraFovDegrees,
-		float64(is.width)/float64(is.height),
-		cameraAperature,
+		is.CameraFov,
+		float64(is.Width)/float64(is.Height),
+		is.CameraAperature,
 		math.Sqrt(lookFromMinusLookAt.X*lookFromMinusLookAt.X+lookFromMinusLookAt.Y*lookFromMinusLookAt.Y+lookFromMinusLookAt.Z*lookFromMinusLookAt.Z),
 	)
 	shapes := []shape{
@@ -96,7 +96,7 @@ func sample(is imageSpec) scene {
 	}
 }
 
-func bunny(is imageSpec) scene {
+func bunny(is ImageSpec) scene {
 	return genericShowCaseWithMirrorWalls(is, true, fromStlFile(
 		"Istareyn/low-poly-stanford-bunny/Bunny-LowPoly.stl",
 		func(sh *shape) {
@@ -107,7 +107,7 @@ func bunny(is imageSpec) scene {
 	))
 }
 
-func bellsprout(is imageSpec) scene {
+func bellsprout(is ImageSpec) scene {
 	return genericShowCaseWithMirrorWalls(is, true, fromStlFile(
 		"Philin_theBlank/bellsprout-with-flower-pot/Bellsprout_in_Flower_Pot.stl",
 		func(sh *shape) {
@@ -118,7 +118,7 @@ func bellsprout(is imageSpec) scene {
 	))
 }
 
-func koala(is imageSpec) scene {
+func koala(is ImageSpec) scene {
 	return cornerGenericShowCase(is, fromStlFile(
 		"Stanford_Dragon/files/dragon.stl",
 		func(sh *shape) {
@@ -129,7 +129,7 @@ func koala(is imageSpec) scene {
 	))
 }
 
-func tesla(is imageSpec) scene {
+func tesla(is ImageSpec) scene {
 	return cornerGenericShowCase(is, fromStlFile(
 		"Sim3D_/tesla-model-3-for-3d-printing/solid/Tesla Model 3.STL",
 		func(sh *shape) {
@@ -140,7 +140,7 @@ func tesla(is imageSpec) scene {
 	))
 }
 
-func genericShowCaseWithMirrorWalls(is imageSpec, withWalls bool, centerShapes []shape) scene {
+func genericShowCaseWithMirrorWalls(is ImageSpec, withWalls bool, centerShapes []shape) scene {
 	lookFrom := r3.Vec{X: 0, Y: 0, Z: -3}
 	lookAt := r3.Vec{X: 0, Y: 0, Z: 0}
 	lookFromMinusLookAt := r3.Sub(lookFrom, lookAt)
@@ -148,9 +148,9 @@ func genericShowCaseWithMirrorWalls(is imageSpec, withWalls bool, centerShapes [
 		lookFrom,
 		lookAt,
 		r3.Vec{X: 0, Y: 1, Z: 0},
-		cameraFovDegrees,
-		float64(is.width)/float64(is.height),
-		cameraAperature,
+		is.CameraFov,
+		float64(is.Width)/float64(is.Height),
+		is.CameraAperature,
 		math.Sqrt(lookFromMinusLookAt.X*lookFromMinusLookAt.X+lookFromMinusLookAt.Y*lookFromMinusLookAt.Y+lookFromMinusLookAt.Z*lookFromMinusLookAt.Z),
 	)
 	shapes := append(centerShapes, floorRoof(-1, 3, 3, phongBlinn{specHardness: 0.0, specularColor: r3.Vec{X: 1, Y: 1, Z: 1}, color: r3.Vec{X: 255.0 / 255.0, Y: 235.0 / 255.0, Z: 205.0 / 255.0}})...)
@@ -262,7 +262,7 @@ func genericShowCaseWithMirrorWalls(is imageSpec, withWalls bool, centerShapes [
 	}
 }
 
-func cornerGenericShowCase(is imageSpec, centerShapes []shape) scene {
+func cornerGenericShowCase(is ImageSpec, centerShapes []shape) scene {
 	radius := 3.0
 	lightDist := radius / 2
 	// lookFrom := r3.Vec{X: -(radius - 1), Y: 0, Z: -(radius - 1)}
@@ -273,9 +273,9 @@ func cornerGenericShowCase(is imageSpec, centerShapes []shape) scene {
 		lookFrom,
 		lookAt,
 		r3.Vec{X: 0, Y: 1, Z: 0},
-		cameraFovDegrees,
-		float64(is.width)/float64(is.height),
-		cameraAperature,
+		is.CameraFov,
+		float64(is.Width)/float64(is.Height),
+		is.CameraAperature,
 		math.Sqrt(lookFromMinusLookAt.X*lookFromMinusLookAt.X+lookFromMinusLookAt.Y*lookFromMinusLookAt.Y+lookFromMinusLookAt.Z*lookFromMinusLookAt.Z),
 	)
 	shapes := append(centerShapes, floorRoof(-1, radius, radius, phongBlinn{specHardness: 0, specularColor: r3.Vec{X: 1, Y: 1, Z: 1}, color: r3.Vec{X: rand.Float64(), Y: rand.Float64(), Z: rand.Float64()}})...)

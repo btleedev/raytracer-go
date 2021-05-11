@@ -10,20 +10,17 @@ import (
 	"time"
 )
 
-const antiAliasingFactor = 32
 const bvhCentroidJitterFactor = 0.0000000001
-const raytracingMaxDepth = 16
-const cameraAperature = 0.015
-const cameraFovDegrees = 60
-const imageWidth = 640  // 3840
-const imageHeight = 360 // 2160
-const softShadowMonteCarloRepetitions = 16
 const softShadowMonteCarloMaxLengthDeviation = 0.25
 
-type imageSpec struct {
-	width              int
-	height             int
-	antiAliasingFactor int
+type ImageSpec struct {
+	Width                           int
+	Height                          int
+	AntiAliasingFactor              int
+	CameraAperature                 float64
+	CameraFov                       float64 // in degrees
+	RayTracingMaxDepth              int
+	SoftShadowMonteCarloRepetitions int
 }
 
 type raytraceJob struct {
@@ -36,25 +33,20 @@ type raytraceResult struct {
 	pixelColorFrac r3.Vec
 }
 
-func GenerateImage() {
-	imageSpec := imageSpec{
-		imageWidth,
-		imageHeight,
-		antiAliasingFactor,
-	}
+func GenerateImage(imageSpec ImageSpec) {
 	theScene := sample(imageSpec)
 	bvh := NewBoundingVolumeHierarchy(theScene.shapes)
-	myImage := image.NewRGBA(image.Rect(0, 0, imageSpec.width, imageSpec.height))
-	jobs := make(chan raytraceJob, imageSpec.height*imageSpec.width)
-	results := make(chan raytraceResult, imageSpec.height*imageSpec.width)
+	myImage := image.NewRGBA(image.Rect(0, 0, imageSpec.Width, imageSpec.Height))
+	jobs := make(chan raytraceJob, imageSpec.Height*imageSpec.Width)
+	results := make(chan raytraceResult, imageSpec.Height*imageSpec.Width)
 	workers := 16
 	for i := 0; i < workers; i++ {
 		go computePixel(i, &imageSpec, theScene.camera, bvh, theScene.lights, jobs, results)
 	}
 
 	startTime := time.Now()
-	for j := imageSpec.height - 1; j >= 0; j-- {
-		for i := 0; i < imageSpec.width; i++ {
+	for j := imageSpec.Height - 1; j >= 0; j-- {
+		for i := 0; i < imageSpec.Width; i++ {
 			jobs <- raytraceJob{
 				i: i,
 				j: j,
@@ -64,8 +56,8 @@ func GenerateImage() {
 	close(jobs)
 
 	count := 0
-	for j := imageSpec.height - 1; j >= 0; j-- {
-		for i := 0; i < imageSpec.width; i++ {
+	for j := imageSpec.Height - 1; j >= 0; j-- {
+		for i := 0; i < imageSpec.Width; i++ {
 			result := <-results
 			myImage.Pix[result.pixelIdx+0] = uint8(result.pixelColorFrac.X * 255.99) // 1st pixel red
 			myImage.Pix[result.pixelIdx+1] = uint8(result.pixelColorFrac.Y * 255.99) // 1st pixel green
@@ -74,7 +66,7 @@ func GenerateImage() {
 
 			count++
 			if count%1000 == 0 {
-				fmt.Printf("%.2f%% pixels rendered, %s\n", float64(count)/float64(imageSpec.height*imageSpec.width)*100.0, time.Since(startTime).String())
+				fmt.Printf("%.2f%% pixels rendered, %s\n", float64(count)/float64(imageSpec.Height*imageSpec.Width)*100.0, time.Since(startTime).String())
 			}
 		}
 	}
@@ -89,22 +81,22 @@ func GenerateImage() {
 	fmt.Printf("Finished ray tracing in %s\n", time.Since(startTime).String())
 }
 
-func computePixel(id int, scene *imageSpec, camera *camera, bvh *boundingVolumeHierarchy, lights *[]light, jobs <-chan raytraceJob, results chan<- raytraceResult) {
+func computePixel(id int, is *ImageSpec, camera *camera, bvh *boundingVolumeHierarchy, lights *[]light, jobs <-chan raytraceJob, results chan<- raytraceResult) {
 	for job := range jobs {
 		pixelColor := r3.Vec{}
-		for s := 0; s < scene.antiAliasingFactor; s++ {
-			u := (float64(job.i) + rand.Float64()) / float64(scene.width)
-			v := (float64(job.j) + rand.Float64()) / float64(scene.height)
+		for s := 0; s < is.AntiAliasingFactor; s++ {
+			u := (float64(job.i) + rand.Float64()) / float64(is.Width)
+			v := (float64(job.j) + rand.Float64()) / float64(is.Height)
 			ray := camera.getRay(u, v)
-			pixelColor = r3.Add(pixelColor, color(&ray, bvh, lights, 0))
+			pixelColor = r3.Add(pixelColor, color(is, &ray, bvh, lights, 0))
 		}
-		pixelColor = r3.Scale(1.0/float64(scene.antiAliasingFactor), pixelColor)
+		pixelColor = r3.Scale(1.0/float64(is.AntiAliasingFactor), pixelColor)
 		pixelColor = r3.Vec{
 			X: pixelColor.X,
 			Y: pixelColor.Y,
 			Z: pixelColor.Z,
 		}
-		pixelIdx := (((scene.height - 1 - job.j) * scene.width) + job.i) * 4
+		pixelIdx := (((is.Height - 1 - job.j) * is.Width) + job.i) * 4
 
 		// fmt.Printf("Worker %v finished job for (%v, %v)\n", id, job.i, job.j)
 		results <- raytraceResult{
@@ -114,13 +106,13 @@ func computePixel(id int, scene *imageSpec, camera *camera, bvh *boundingVolumeH
 	}
 }
 
-func color(r *ray, bvh *boundingVolumeHierarchy, lights *[]light, depth int) r3.Vec {
+func color(is *ImageSpec, r *ray, bvh *boundingVolumeHierarchy, lights *[]light, depth int) r3.Vec {
 	var hit, minHitRecord = bvh.trace(r, 0.0)
 	if hit {
-		if depth < raytracingMaxDepth {
-			shouldTrace, attenuation, scattered, terminalColor := minHitRecord.material.scatter(r, minHitRecord, bvh, lights)
+		if depth < is.RayTracingMaxDepth {
+			shouldTrace, attenuation, scattered, terminalColor := minHitRecord.material.scatter(is, r, minHitRecord, bvh, lights)
 			if shouldTrace {
-				recColor := color(&scattered, bvh, lights, depth+1)
+				recColor := color(is, &scattered, bvh, lights, depth+1)
 				return r3.Vec{
 					X: attenuation.X * recColor.X,
 					Y: attenuation.Y * recColor.Y,
