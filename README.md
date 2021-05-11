@@ -50,19 +50,22 @@ Ray tracer written in golang.
         Width:                           imageWidth,
         Height:                          imageHeight,
         AntiAliasingFactor:              antiAliasingFactor,
-        CameraAperature:                 cameraAperature,
-        CameraFov:                       cameraFovDegrees,
         RayTracingMaxDepth:              raytracingMaxDepth,
         SoftShadowMonteCarloRepetitions: softShadowMonteCarloRepetitions,
 
+        ImageLocation: "out.png",
+    }
+    scene := raytracer.Scene{
         CameraLookFrom:                  cameraLookFrom,
         CameraLookAt:                    cameraLookAt,
         CameraUp:                        cameraUp,
         CameraFocusPoint:                cameraFocusPoint,
-
-        ImageLocation:                   "out.png",
+        CameraAperature:                 cameraAperature,
+        CameraFov:                       cameraFovDegrees,
+        Shapes:                          shapes,
+        Lights:                          lights,
     }
-    raytracer.GenerateImage(imageSpec, shapes, lights)
+    raytracer.GenerateImage(imageSpec, scene)
 ```
 
 ## Command

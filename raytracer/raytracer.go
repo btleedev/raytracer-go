@@ -18,17 +18,23 @@ type ImageSpec struct {
 	Width                           int
 	Height                          int
 	AntiAliasingFactor              int
-	CameraAperature                 float64
-	CameraFov                       float64 // in degrees
 	RayTracingMaxDepth              int
 	SoftShadowMonteCarloRepetitions int
 
+	ImageLocation string
+}
+
+type Scene struct {
 	CameraLookFrom   r3.Vec
 	CameraLookAt     r3.Vec
 	CameraUp         r3.Vec
 	CameraFocusPoint r3.Vec // when using camera aperature, point to focus on
 
-	ImageLocation string
+	CameraAperature float64
+	CameraFov       float64 // in degrees
+
+	Shapes []Shape
+	Lights []Light
 }
 
 type raytraceJob struct {
@@ -41,24 +47,24 @@ type raytraceResult struct {
 	pixelColorFrac r3.Vec
 }
 
-func GenerateImage(imageSpec ImageSpec, shapes []Shape, lights []Light) {
-	lookFromMinusLookAt := r3.Sub(imageSpec.CameraLookFrom, imageSpec.CameraLookAt)
+func GenerateImage(imageSpec ImageSpec, scene Scene) {
+	lookFromMinusLookAt := r3.Sub(scene.CameraLookFrom, scene.CameraLookAt)
 	cam := NewCamera(
-		imageSpec.CameraLookFrom,
-		imageSpec.CameraLookAt,
-		imageSpec.CameraUp,
-		imageSpec.CameraFov,
+		scene.CameraLookFrom,
+		scene.CameraLookAt,
+		scene.CameraUp,
+		scene.CameraFov,
 		float64(imageSpec.Width)/float64(imageSpec.Height),
-		imageSpec.CameraAperature,
+		scene.CameraAperature,
 		math.Sqrt(lookFromMinusLookAt.X*lookFromMinusLookAt.X+lookFromMinusLookAt.Y*lookFromMinusLookAt.Y+lookFromMinusLookAt.Z*lookFromMinusLookAt.Z),
 	)
-	bvh := NewBoundingVolumeHierarchy(&shapes)
+	bvh := NewBoundingVolumeHierarchy(&scene.Shapes)
 	myImage := image.NewRGBA(image.Rect(0, 0, imageSpec.Width, imageSpec.Height))
 	jobs := make(chan raytraceJob, imageSpec.Height*imageSpec.Width)
 	results := make(chan raytraceResult, imageSpec.Height*imageSpec.Width)
 	workers := 16
 	for i := 0; i < workers; i++ {
-		go computePixel(i, &imageSpec, &cam, bvh, &lights, jobs, results)
+		go computePixel(i, &imageSpec, &cam, bvh, &scene.Lights, jobs, results)
 	}
 
 	startTime := time.Now()
