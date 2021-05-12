@@ -115,6 +115,8 @@ open ./out.png
                 SpecHardness:  1,
             },
         },
+        
+        // back mirror
         &raytracer.TrianglePlane{
             PointA:      r3.Vec{ X: backMirrorRadius, Y: backMirrorRadius, Z: backMirrorRadius },
             PointB:      r3.Vec{ X: backMirrorRadius, Y: 0, Z: backMirrorRadius },

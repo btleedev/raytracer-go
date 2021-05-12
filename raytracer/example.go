@@ -64,6 +64,8 @@ func ExampleRegression(width, height int) (is ImageSpec, sc Scene) {
 				SpecHardness:  1,
 			},
 		},
+
+		// back mirror
 		&TrianglePlane{
 			PointA:      r3.Vec{X: backMirrorRadius, Y: backMirrorRadius, Z: backMirrorRadius},
 			PointB:      r3.Vec{X: backMirrorRadius, Y: 0, Z: backMirrorRadius},
