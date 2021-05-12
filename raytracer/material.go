@@ -95,7 +95,7 @@ func (p PhongBlinn) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *bo
 					lightColor := light.getColorFrac()
 					diffuseColor := r3.Scale(
 						intensity*light.getLightIntensity()/lightDistanceSqrd,
-						r3.Unit(r3.Vec{X: p.Color.X * lightColor.X, Y: p.Color.Y * lightColor.Y, Z: p.Color.Z * lightColor.Z}),
+						r3.Unit(r3.Vec{X: p.Color.X + lightColor.X, Y: p.Color.Y + lightColor.Y, Z: p.Color.Z + lightColor.Z}),
 					)
 
 					// specular Color uses specular Color of material

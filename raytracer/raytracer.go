@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"gonum.org/v1/gonum/spatial/r3"
 	"image"
-	"image/png"
 	"math"
 	"math/rand"
-	"os"
 	"time"
 )
 
@@ -20,8 +18,7 @@ type ImageSpec struct {
 	AntiAliasingFactor              int
 	RayTracingMaxDepth              int
 	SoftShadowMonteCarloRepetitions int
-
-	ImageLocation string
+	WorkerCount                     int
 }
 
 type Scene struct {
@@ -47,7 +44,7 @@ type raytraceResult struct {
 	pixelColorFrac r3.Vec
 }
 
-func GenerateImage(imageSpec ImageSpec, scene Scene) {
+func GenerateImage(imageSpec ImageSpec, scene Scene) *image.RGBA {
 	lookFromMinusLookAt := r3.Sub(scene.CameraLookFrom, scene.CameraLookAt)
 	cam := NewCamera(
 		scene.CameraLookFrom,
@@ -62,7 +59,7 @@ func GenerateImage(imageSpec ImageSpec, scene Scene) {
 	myImage := image.NewRGBA(image.Rect(0, 0, imageSpec.Width, imageSpec.Height))
 	jobs := make(chan raytraceJob, imageSpec.Height*imageSpec.Width)
 	results := make(chan raytraceResult, imageSpec.Height*imageSpec.Width)
-	workers := 16
+	workers := imageSpec.WorkerCount
 	for i := 0; i < workers; i++ {
 		go computePixel(i, &imageSpec, &cam, bvh, &scene.Lights, jobs, results)
 	}
@@ -94,14 +91,8 @@ func GenerateImage(imageSpec ImageSpec, scene Scene) {
 		}
 	}
 
-	outputFile, err := os.Create(imageSpec.ImageLocation)
-	if err != nil {
-		panic("failed to create image")
-	}
-	defer outputFile.Close()
-	png.Encode(outputFile, myImage)
-
 	fmt.Printf("Finished ray tracing in %s\n", time.Since(startTime).String())
+	return myImage
 }
 
 func computePixel(id int, is *ImageSpec, camera *camera, bvh *boundingVolumeHierarchy, lights *[]Light, jobs <-chan raytraceJob, results chan<- raytraceResult) {

@@ -2,39 +2,22 @@ package main
 
 import (
 	"example.com/hello/raytracer"
+	"image/png"
+	"os"
 )
-
-const antiAliasingFactor = 32
-const cameraAperature = 0.015
-const cameraFovDegrees = 60
-const imageWidth = 640  // 3840
-const imageHeight = 360 // 2160
-const raytracingMaxDepth = 16
-const softShadowMonteCarloRepetitions = 16
 
 func main() {
 	// CPU profiling by default
 	// defer profile.Start().Stop()
 
-	cameraLookFrom, cameraLookAt, cameraUp, cameraFocusPoint, shapes, lights := sample()
-	imageSpec := raytracer.ImageSpec{
-		Width:                           imageWidth,
-		Height:                          imageHeight,
-		AntiAliasingFactor:              antiAliasingFactor,
-		RayTracingMaxDepth:              raytracingMaxDepth,
-		SoftShadowMonteCarloRepetitions: softShadowMonteCarloRepetitions,
+	imageLocation := "out.png"
+	imageSpec, scene := raytracer.ExampleRegression(640, 380)
+	myImage := raytracer.GenerateImage(imageSpec, scene)
 
-		ImageLocation: "out.png",
+	outputFile, err := os.Create(imageLocation)
+	if err != nil {
+		panic("failed to create image")
 	}
-	scene := raytracer.Scene{
-		CameraLookFrom:   cameraLookFrom,
-		CameraLookAt:     cameraLookAt,
-		CameraUp:         cameraUp,
-		CameraFocusPoint: cameraFocusPoint,
-		CameraAperature:  cameraAperature,
-		CameraFov:        cameraFovDegrees,
-		Shapes:           shapes,
-		Lights:           lights,
-	}
-	raytracer.GenerateImage(imageSpec, scene)
+	defer outputFile.Close()
+	png.Encode(outputFile, myImage)
 }
