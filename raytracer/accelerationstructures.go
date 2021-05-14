@@ -9,6 +9,7 @@ import (
 )
 
 type boundingVolumeHierarchyNode struct {
+	nodeId   int
 	pMin     r3.Vec
 	pMax     r3.Vec
 	leaf     bool
@@ -43,6 +44,7 @@ func NewBoundingVolumeHierarchy(shapes *[]Shape) *boundingVolumeHierarchy {
 	bvh := boundingVolumeHierarchy{
 		shapes: shapes,
 		root: boundingVolumeHierarchyNode{
+			nodeId:   0,
 			pMin:     pMin,
 			pMax:     pMax,
 			leaf:     true,
@@ -51,9 +53,10 @@ func NewBoundingVolumeHierarchy(shapes *[]Shape) *boundingVolumeHierarchy {
 		},
 	}
 
+	nodeCounter := 1
 	for i := 0; i < len(*shapes); i++ {
 		ptr := &(*shapes)[i]
-		addToBVH(&bvh.root, ptr)
+		addToBVH(&bvh.root, ptr, &nodeCounter)
 	}
 	bvh.recomputeBounds()
 
@@ -61,15 +64,15 @@ func NewBoundingVolumeHierarchy(shapes *[]Shape) *boundingVolumeHierarchy {
 	return &bvh
 }
 
-func (bvh boundingVolumeHierarchy) traceRecursive(r *ray, tMin float64) (hit bool, record *hitRecord) {
+func (bvh boundingVolumeHierarchy) trace(r *ray, tMin float64) (hit bool, record *hitRecord) {
 	return traceDownBoundingVolumeHierarchyNode(r, tMin, math.MaxFloat64, &bvh.root)
 }
 
-func (bvh boundingVolumeHierarchy) trace(r *ray, tMin float64) (hit bool, record *hitRecord) {
+func (bvh boundingVolumeHierarchy) tracePQ(r *ray, tMin float64) (hit bool, record *hitRecord) {
 	minHeap := make(bvhPriorityQueue, 0)
 	minHeap.Push(&Item{
-		value:    &bvh.root,
-		priority: 0,
+		value: &bvh.root,
+		t:     0,
 	})
 	heap.Init(&minHeap)
 	hr := hitRecord{t: math.MaxFloat64}
@@ -78,7 +81,7 @@ func (bvh boundingVolumeHierarchy) trace(r *ray, tMin float64) (hit bool, record
 		node := item.value
 
 		// no need to explore further if all bounding boxes are further than hit object
-		if item.priority >= hr.t {
+		if item.t > hr.t {
 			break
 		}
 
@@ -92,17 +95,12 @@ func (bvh boundingVolumeHierarchy) trace(r *ray, tMin float64) (hit bool, record
 		} else {
 			if node.children != nil {
 				for _, v := range node.children {
-					didHit, tNear, tFar := hitBoundingBox(r, v.pMin, v.pMax, tMin, hr.t)
+					didHit, tNear, _ := hitBoundingBox(r, v.pMin, v.pMax)
 					if didHit {
-						// priority is closest distance to ray, except negative distances since they're in the opposite direction
 						tPriority := tNear
-						if tNear < 0 {
-							tPriority = tFar
-						}
-
 						heap.Push(&minHeap, &Item{
-							value:    v,
-							priority: tPriority,
+							value: v,
+							t:     tPriority,
 						})
 					}
 				}
@@ -110,12 +108,12 @@ func (bvh boundingVolumeHierarchy) trace(r *ray, tMin float64) (hit bool, record
 		}
 	}
 
-	return traceDownBoundingVolumeHierarchyNode(r, tMin, math.MaxFloat64, &bvh.root)
+	return hr.t != math.MaxFloat64, &hr
 }
 
 // traces a ray and returns if it hits something, and a hit record
 func traceDownBoundingVolumeHierarchyNode(r *ray, tMin float64, tMax float64, node *boundingVolumeHierarchyNode) (hit bool, record *hitRecord) {
-	if didHit, _, _ := hitBoundingBox(r, node.pMin, node.pMax, tMin, tMax); !didHit {
+	if didHit, _, _ := hitBoundingBox(r, node.pMin, node.pMax); !didHit {
 		return false, &hitRecord{t: -1}
 	}
 
@@ -177,6 +175,7 @@ func recomputeNodeBounds(node *boundingVolumeHierarchyNode) (pMin r3.Vec, pMax r
 func addToBVH(
 	curr *boundingVolumeHierarchyNode,
 	shape *Shape,
+	nodeCounter *int,
 ) {
 	if curr.leaf {
 		// empty leaf node, feel free to add
@@ -187,19 +186,19 @@ func addToBVH(
 			// promote this to a child node, put object 1 is 1 and another in 2
 		} else {
 			curr.leaf = false
-			curr.children = splitBvhQuadrant(&curr.pMin, &curr.pMax)
+			curr.children = splitBvhQuadrant(&curr.pMin, &curr.pMax, nodeCounter)
 			removedShape := *curr.shape
 			curr.shape = nil
 
 			// recursive call to same node, now that it isn't a leaf it should add it
-			addToBVH(curr, &removedShape)
-			addToBVH(curr, shape)
+			addToBVH(curr, &removedShape, nodeCounter)
+			addToBVH(curr, shape, nodeCounter)
 			return
 		}
 	} else {
 		// delegate adding it to the node down
 		ptr := curr.children[getBvhQuadrantIndex(shape, &curr.pMin, &curr.pMax)]
-		addToBVH(ptr, shape)
+		addToBVH(ptr, shape, nodeCounter)
 		return
 	}
 }
@@ -229,12 +228,14 @@ func getBvhQuadrantIndex(s *Shape, pMin *r3.Vec, pMax *r3.Vec) uint8 {
 }
 
 // see getBvhQuadrantIndex
-func splitBvhQuadrant(lowestBounds *r3.Vec, highestBounds *r3.Vec) []*boundingVolumeHierarchyNode {
+func splitBvhQuadrant(lowestBounds *r3.Vec, highestBounds *r3.Vec, nodeCounter *int) []*boundingVolumeHierarchyNode {
 	halfX := (highestBounds.X - lowestBounds.X) / 2
 	halfY := (highestBounds.Y - lowestBounds.Y) / 2
 	halfZ := (highestBounds.Z - lowestBounds.Z) / 2
+	*nodeCounter = (*nodeCounter) + 8
 	return []*boundingVolumeHierarchyNode{
 		&boundingVolumeHierarchyNode{
+			nodeId:   (*nodeCounter) + 8,
 			pMin:     r3.Vec{X: lowestBounds.X, Y: lowestBounds.Y, Z: lowestBounds.Z},
 			pMax:     r3.Vec{X: lowestBounds.X + halfX, Y: lowestBounds.Y + halfY, Z: lowestBounds.Z + halfZ},
 			leaf:     true,
@@ -242,6 +243,7 @@ func splitBvhQuadrant(lowestBounds *r3.Vec, highestBounds *r3.Vec) []*boundingVo
 			children: nil,
 		},
 		&boundingVolumeHierarchyNode{
+			nodeId:   (*nodeCounter) + 7,
 			pMin:     r3.Vec{X: lowestBounds.X + halfX, Y: lowestBounds.Y, Z: lowestBounds.Z},
 			pMax:     r3.Vec{X: highestBounds.X, Y: lowestBounds.Y + halfY, Z: lowestBounds.Z + halfZ},
 			leaf:     true,
@@ -249,6 +251,7 @@ func splitBvhQuadrant(lowestBounds *r3.Vec, highestBounds *r3.Vec) []*boundingVo
 			children: nil,
 		},
 		&boundingVolumeHierarchyNode{
+			nodeId:   (*nodeCounter) + 6,
 			pMin:     r3.Vec{X: lowestBounds.X, Y: lowestBounds.Y + halfY, Z: lowestBounds.Z},
 			pMax:     r3.Vec{X: lowestBounds.X + halfX, Y: highestBounds.Y, Z: lowestBounds.Z + halfZ},
 			leaf:     true,
@@ -256,6 +259,7 @@ func splitBvhQuadrant(lowestBounds *r3.Vec, highestBounds *r3.Vec) []*boundingVo
 			children: nil,
 		},
 		&boundingVolumeHierarchyNode{
+			nodeId:   (*nodeCounter) + 5,
 			pMin:     r3.Vec{X: lowestBounds.X + halfX, Y: lowestBounds.Y + halfY, Z: lowestBounds.Z},
 			pMax:     r3.Vec{X: highestBounds.X, Y: highestBounds.Y, Z: lowestBounds.Z + halfZ},
 			leaf:     true,
@@ -263,6 +267,7 @@ func splitBvhQuadrant(lowestBounds *r3.Vec, highestBounds *r3.Vec) []*boundingVo
 			children: nil,
 		},
 		&boundingVolumeHierarchyNode{
+			nodeId:   (*nodeCounter) + 4,
 			pMin:     r3.Vec{X: lowestBounds.X, Y: lowestBounds.Y, Z: lowestBounds.Z + halfZ},
 			pMax:     r3.Vec{X: lowestBounds.X + halfX, Y: lowestBounds.Y + halfY, Z: highestBounds.Z},
 			leaf:     true,
@@ -270,6 +275,7 @@ func splitBvhQuadrant(lowestBounds *r3.Vec, highestBounds *r3.Vec) []*boundingVo
 			children: nil,
 		},
 		&boundingVolumeHierarchyNode{
+			nodeId:   (*nodeCounter) + 3,
 			pMin:     r3.Vec{X: lowestBounds.X + halfX, Y: lowestBounds.Y, Z: lowestBounds.Z + halfZ},
 			pMax:     r3.Vec{X: highestBounds.X, Y: lowestBounds.Y + halfY, Z: highestBounds.Z},
 			leaf:     true,
@@ -277,6 +283,7 @@ func splitBvhQuadrant(lowestBounds *r3.Vec, highestBounds *r3.Vec) []*boundingVo
 			children: nil,
 		},
 		&boundingVolumeHierarchyNode{
+			nodeId:   (*nodeCounter) + 2,
 			pMin:     r3.Vec{X: lowestBounds.X, Y: lowestBounds.Y + halfY, Z: lowestBounds.Z + halfZ},
 			pMax:     r3.Vec{X: lowestBounds.X + halfX, Y: highestBounds.Y, Z: highestBounds.Z},
 			leaf:     true,
@@ -284,6 +291,7 @@ func splitBvhQuadrant(lowestBounds *r3.Vec, highestBounds *r3.Vec) []*boundingVo
 			children: nil,
 		},
 		&boundingVolumeHierarchyNode{
+			nodeId:   (*nodeCounter) + 1,
 			pMin:     r3.Vec{X: lowestBounds.X + halfX, Y: lowestBounds.Y + halfY, Z: lowestBounds.Z + halfZ},
 			pMax:     r3.Vec{X: highestBounds.X, Y: highestBounds.Y, Z: highestBounds.Z},
 			leaf:     true,
@@ -294,25 +302,24 @@ func splitBvhQuadrant(lowestBounds *r3.Vec, highestBounds *r3.Vec) []*boundingVo
 }
 
 // determines whether the ray hits the bounding box
-func hitBoundingBox(r *ray, pMin r3.Vec, pMax r3.Vec, tMin float64, tMax float64) (hit bool, tNear float64, tFar float64) {
-	normalizedDir := r3.Unit(r.direction)
+func hitBoundingBox(r *ray, pMin r3.Vec, pMax r3.Vec) (hit bool, tNear float64, tFar float64) {
 	invDirection := r3.Vec{
-		X: 1 / normalizedDir.X,
-		Y: 1 / normalizedDir.Y,
-		Z: 1 / normalizedDir.Z,
+		X: 1 / r.normalizedDirection.X,
+		Y: 1 / r.normalizedDirection.Y,
+		Z: 1 / r.normalizedDirection.Z,
 	}
 	// 1 if less than 0, invert if less than 0
 	bounds0 := pMin
 	bounds1 := pMax
-	if r.direction.X < 0 {
+	if r.normalizedDirection.X < 0 {
 		bounds0.X = pMax.X
 		bounds1.X = pMin.X
 	}
-	if r.direction.Y < 0 {
+	if r.normalizedDirection.Y < 0 {
 		bounds0.Y = pMax.Y
 		bounds1.Y = pMin.Y
 	}
-	if r.direction.Z < 0 {
+	if r.normalizedDirection.Z < 0 {
 		bounds0.Z = pMax.Z
 		bounds1.Z = pMin.Z
 	}
@@ -345,10 +352,6 @@ func hitBoundingBox(r *ray, pMin r3.Vec, pMax r3.Vec, tMin float64, tMax float64
 	}
 	if tZMax < ptMax {
 		ptMax = tZMax
-	}
-
-	if ptMax < tMin || ptMin > tMax {
-		return false, -1, -1
 	}
 
 	return true, ptMin, ptMax

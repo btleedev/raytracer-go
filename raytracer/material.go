@@ -30,7 +30,7 @@ type PhongBlinn struct {
 }
 
 func (d Standard) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]Light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
-	return false, r3.Vec{}, ray{p: hitRecord.p, direction: r3.Vec{}}, d.Color
+	return false, r3.Vec{}, ray{p: hitRecord.p, normalizedDirection: r3.Vec{}}, d.Color
 }
 
 func (m Metal) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]Light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
@@ -38,39 +38,28 @@ func (m Metal) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *boundin
 	if m.Fuzz < 1.0 {
 		correctedFuzz = m.Fuzz
 	}
-	directionNormalized := r3.Unit(r.direction)
-	reflectedRay := reflected(&directionNormalized, &hitRecord.normal)
-	return r3.Dot(reflectedRay, hitRecord.normal) > 0, m.Albedo, ray{p: hitRecord.p, direction: r3.Add(reflectedRay, r3.Scale(correctedFuzz, randomInUnitSphere()))}, r3.Vec{}
+	reflectedRay := reflected(&r.normalizedDirection, &hitRecord.normal)
+	return r3.Dot(reflectedRay, hitRecord.normal) > 0, m.Albedo, ray{p: hitRecord.p, normalizedDirection: r3.Add(reflectedRay, r3.Scale(correctedFuzz, randomInUnitSphere()))}, r3.Vec{}
 }
 
 func (d Dielectric) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]Light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
-	outwardNormal := r3.Vec{}
-	niOverNt := 0.0
-	reflectProb := 0.0
-	cosine := 0.0
-	reflectedVec := reflected(&r.direction, &hitRecord.normal)
-	if r3.Dot(r.direction, hitRecord.normal) > 0 {
-		outwardNormal = r3.Scale(-1, hitRecord.normal)
-		niOverNt = d.RefractiveIndex
-		cosine = d.RefractiveIndex * r3.Dot(r3.Unit(r.direction), hitRecord.normal) / math.Sqrt(r.direction.X*r.direction.X+r.direction.Y*r.direction.Y+r.direction.Z*r.direction.Z)
+	refractionRatio := 0.0
+	if r3.Dot(r.normalizedDirection, hitRecord.normal) > 0 {
+		refractionRatio = d.RefractiveIndex
 	} else {
-		outwardNormal = hitRecord.normal
-		niOverNt = 1.0 / d.RefractiveIndex
-		cosine = -1 * r3.Dot(r3.Unit(r.direction), hitRecord.normal) / math.Sqrt(r.direction.X*r.direction.X+r.direction.Y*r.direction.Y+r.direction.Z*r.direction.Z)
+		refractionRatio = 1.0 / d.RefractiveIndex
 	}
 
-	shouldRefract, refractedVec := refracted(&r.direction, &outwardNormal, niOverNt)
-	if shouldRefract {
-		reflectProb = schlick(cosine, d.RefractiveIndex)
+	cosTheta := math.Min(r3.Dot(r3.Scale(-1, r.normalizedDirection), hitRecord.normal), 1.0)
+	sinTheta := math.Sqrt(1 - cosTheta*cosTheta)
+	cannotRefract := refractionRatio*sinTheta > 1.0
+	direction := r3.Vec{}
+	if cannotRefract || schlick(cosTheta, refractionRatio) > rand.Float64() {
+		direction = reflected(&r.normalizedDirection, &hitRecord.normal)
 	} else {
-		reflectProb = 1.0
+		direction = refracted(&r.normalizedDirection, &hitRecord.normal, refractionRatio)
 	}
-
-	if rand.Float64() < reflectProb {
-		return true, r3.Vec{X: 1.0, Y: 1.0, Z: 1.0}, ray{p: r3.Add(hitRecord.p, r3.Scale(0.00001, reflectedVec)), direction: reflectedVec}, r3.Vec{}
-	} else {
-		return true, r3.Vec{X: 1.0, Y: 1.0, Z: 1.0}, ray{p: r3.Add(hitRecord.p, r3.Scale(0.00001, refractedVec)), direction: refractedVec}, r3.Vec{}
-	}
+	return true, r3.Vec{X: 1.0, Y: 1.0, Z: 1.0}, ray{p: r3.Add(hitRecord.p, r3.Scale(0.00001, direction)), normalizedDirection: direction}, r3.Vec{}
 }
 
 // see https://www.cs.uregina.ca/Links/class-info/315/WWW/Lab4/#Lighting
@@ -99,7 +88,7 @@ func (p PhongBlinn) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *bo
 					)
 
 					// specular Color uses specular Color of material
-					h := r3.Unit(r3.Add(lightDirection, r3.Unit(r.direction)))
+					h := r3.Unit(r3.Add(lightDirection, r.normalizedDirection))
 					nDotH := r3.Dot(hitRecord.normal, h)
 					specIntensity := math.Pow(saturate(nDotH), p.SpecHardness)
 					specularColor := r3.Scale(specIntensity*light.getSpecularLightIntensity()/lightDistanceSqrd, p.SpecularColor)
@@ -135,18 +124,15 @@ func randomInUnitSphere() r3.Vec {
 }
 
 func reflected(v *r3.Vec, n *r3.Vec) r3.Vec {
-	return r3.Sub(*v, r3.Scale(2*r3.Dot(*v, *n), *n))
+	return r3.Unit(r3.Sub(*v, r3.Scale(2*r3.Dot(*v, *n), *n)))
 }
 
-func refracted(v *r3.Vec, n *r3.Vec, niOverNt float64) (b bool, refracted r3.Vec) {
+func refracted(v *r3.Vec, n *r3.Vec, etaiOverEtat float64) r3.Vec {
 	uv := r3.Unit(*v)
-	dt := r3.Dot(uv, *n)
-	discriminant := 1.0 - niOverNt*niOverNt*(1-dt*dt)
-	if discriminant > 0 {
-		return true, r3.Sub(r3.Scale(niOverNt, r3.Sub(uv, r3.Scale(dt, *n))), r3.Scale(math.Sqrt(discriminant), *n))
-	} else {
-		return false, r3.Vec{}
-	}
+	cosTheta := math.Min(r3.Dot(r3.Scale(-1, uv), *n), 1.0)
+	rOutPerp := r3.Scale(etaiOverEtat, r3.Add(uv, r3.Scale(cosTheta, *n)))
+	rOutParallel := r3.Scale(-math.Sqrt(math.Abs(1.0-rOutPerp.X*rOutPerp.X+rOutPerp.Y*rOutPerp.Y+rOutPerp.Z*rOutPerp.Z)), *n)
+	return r3.Unit(r3.Add(rOutPerp, rOutParallel))
 }
 
 func schlick(cosine float64, refractiveIndex float64) float64 {

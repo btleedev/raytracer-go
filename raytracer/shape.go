@@ -38,8 +38,8 @@ type TrianglePlane struct {
 
 func (s Sphere) hit(r *ray, tMin float64, tMax float64) hitRecord {
 	oc := r3.Sub(r.p, s.Center)
-	a := r3.Dot(r.direction, r.direction)
-	b := r3.Dot(oc, r.direction)
+	a := r3.Dot(r.normalizedDirection, r.normalizedDirection)
+	b := r3.Dot(oc, r.normalizedDirection)
 	c := r3.Dot(oc, oc) - s.Radius*s.Radius
 	discriminant := b*b - a*c
 	if discriminant > 0 {
@@ -88,7 +88,7 @@ func (s Sphere) centroid() r3.Vec {
 
 func (tr TrianglePlane) hit(r *ray, tMin float64, tMax float64) hitRecord {
 	// moller-trumbore ray triangle intersection algorithm
-	dir := r.direction
+	dir := r.normalizedDirection
 	bMinusA := r3.Sub(tr.PointB, tr.PointA)
 	cMinusA := r3.Sub(tr.PointC, tr.PointA)
 	normal := r3.Unit(r3.Cross(bMinusA, cMinusA))

@@ -72,7 +72,7 @@ open ./out.png
             Center: r3.Vec{ X: 2 * centerPiecesRadius, Y: centerPiecesRadius, Z: 0 },
             Radius: centerPiecesRadius,
             Mat: raytracer.Dielectric{
-                RefractiveIndex: 1.0,
+                RefractiveIndex: 1.52,
             },
         },
         &raytracer.Sphere{
@@ -87,8 +87,9 @@ open ./out.png
         &raytracer.Sphere{
             Center: r3.Vec{ X: -2 * centerPiecesRadius, Y: centerPiecesRadius, Z: 0 },
             Radius: centerPiecesRadius,
-            Mat: raytracer.Dielectric{
-                RefractiveIndex: 0,
+            Mat: Metal{
+                Albedo: r3.Vec{ X: 1.0, Y: 1.0, Z: 1.0},
+                Fuzz:   0,
             },
         },
 

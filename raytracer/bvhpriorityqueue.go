@@ -2,12 +2,14 @@ package raytracer
 
 import (
 	"container/heap"
+	"math"
 )
 
-// An Item is something we manage in a priority queue.
+// An Item is something we manage in a t queue.
 type Item struct {
-	value    *boundingVolumeHierarchyNode // The value of the item; arbitrary.
-	priority float64                      // The priority of the item in the queue.
+	value *boundingVolumeHierarchyNode // The value of the item; arbitrary.
+	// Value of 't' in the Ray equation.
+	t float64
 	// The index is needed by update and is maintained by the heap.Interface methods.
 	index int // The index of the item in the heap.
 }
@@ -18,8 +20,11 @@ type bvhPriorityQueue []*Item
 func (pq bvhPriorityQueue) Len() int { return len(pq) }
 
 func (pq bvhPriorityQueue) Less(i, j int) bool {
-	// give priority to the lowest
-	return pq[i].priority < pq[j].priority
+	// give priority to closest t, if the same give priority to node id order
+	if math.Abs(pq[i].t-pq[j].t) < 1e-9 {
+		return pq[i].value.nodeId < pq[j].value.nodeId
+	}
+	return pq[i].t < pq[j].t
 }
 
 func (pq bvhPriorityQueue) Swap(i, j int) {
@@ -45,9 +50,9 @@ func (pq *bvhPriorityQueue) Pop() interface{} {
 	return item
 }
 
-// update modifies the priority and value of an Item in the queue.
+// update modifies the t and value of an Item in the queue.
 func (pq *bvhPriorityQueue) update(item *Item, value *boundingVolumeHierarchyNode, priority float64) {
 	item.value = value
-	item.priority = priority
+	item.t = priority
 	heap.Fix(pq, item.index)
 }

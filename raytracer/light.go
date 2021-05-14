@@ -127,8 +127,8 @@ func doesReachLight(origin *r3.Vec, lightPosition *r3.Vec, bvh *boundingVolumeHi
 	lightDirection := r3.Sub(*lightPosition, *origin)
 	unitLightDirection := r3.Unit(lightDirection)
 	r := ray{
-		p:         *origin,
-		direction: unitLightDirection,
+		p:                   *origin,
+		normalizedDirection: unitLightDirection,
 	}
 	hit, hitRecord := bvh.trace(
 		&r,

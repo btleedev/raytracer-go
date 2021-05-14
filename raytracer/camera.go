@@ -38,8 +38,8 @@ func (c camera) getRay(s float64, t float64) ray {
 	rd := r3.Scale(c.lensRadius, randomInUnitDisk())
 	offset := r3.Add(r3.Scale(rd.X, c.u), r3.Scale(rd.Y, c.v))
 	return ray{
-		p:         r3.Add(c.origin, offset),
-		direction: r3.Sub(r3.Sub(r3.Add(r3.Add(c.lowerLeftCorner, r3.Scale(s, c.horizontal)), r3.Scale(t, c.vertical)), c.origin), offset),
+		p:                   r3.Add(c.origin, offset),
+		normalizedDirection: r3.Unit(r3.Sub(r3.Sub(r3.Add(r3.Add(c.lowerLeftCorner, r3.Scale(s, c.horizontal)), r3.Scale(t, c.vertical)), c.origin), offset)),
 	}
 }
 
