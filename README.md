@@ -1,7 +1,7 @@
 Ray tracer written in golang.
 
-![bunny](samples/bunny.png "Stanford Bunny")
-![lyman](samples/lyman.png "Lyman from Animal Crossing")
+![bunny](samples_images/bunny.png "Stanford Bunny")
+![lyman](samples_images/lyman.png "Lyman from Animal Crossing")
 
 # Usage
 
@@ -14,7 +14,7 @@ go build -o raytracer-go
 open ./out.png
 ```
 
-![Code Example](samples/code_example.png "Code Example")
+![Code Example](samples_images/code_example.png "Code Example")
 
 # Shapes
 

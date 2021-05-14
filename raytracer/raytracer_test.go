@@ -63,7 +63,7 @@ func TestRegression(t *testing.T) {
 
 func exampleRegression640x380(t *testing.T) (is ImageSpec, sc Scene, exp *image.RGBA) {
 	imageSpec, scene := ExampleRegression(640, 380)
-	fileName := "../samples/code_example.png"
+	fileName := "../samples_images/code_example.png"
 	file, err := os.Open(fileName)
 	if err != nil {
 		t.Error(err)
