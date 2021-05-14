@@ -61,14 +61,15 @@ func NewBoundingVolumeHierarchy(shapes *[]Shape) *boundingVolumeHierarchy {
 	bvh.recomputeBounds()
 
 	fmt.Printf("Finished building BoundingVolumeHierarchy\n")
+	bvh.printNodes()
 	return &bvh
 }
 
-func (bvh boundingVolumeHierarchy) trace(r *ray, tMin float64) (hit bool, record *hitRecord) {
+func (bvh boundingVolumeHierarchy) traceRecursively(r *ray, tMin float64) (hit bool, record *hitRecord) {
 	return traceDownBoundingVolumeHierarchyNode(r, tMin, math.MaxFloat64, &bvh.root)
 }
 
-func (bvh boundingVolumeHierarchy) tracePQ(r *ray, tMin float64) (hit bool, record *hitRecord) {
+func (bvh boundingVolumeHierarchy) trace(r *ray, tMin float64) (hit bool, record *hitRecord) {
 	minHeap := make(bvhPriorityQueue, 0)
 	minHeap.Push(&Item{
 		value: &bvh.root,
@@ -77,7 +78,7 @@ func (bvh boundingVolumeHierarchy) tracePQ(r *ray, tMin float64) (hit bool, reco
 	heap.Init(&minHeap)
 	hr := hitRecord{t: math.MaxFloat64}
 	for minHeap.Len() > 0 {
-		item := minHeap.Pop().(*Item)
+		item := heap.Pop(&minHeap).(*Item)
 		node := item.value
 
 		// no need to explore further if all bounding boxes are further than hit object
@@ -95,13 +96,15 @@ func (bvh boundingVolumeHierarchy) tracePQ(r *ray, tMin float64) (hit bool, reco
 		} else {
 			if node.children != nil {
 				for _, v := range node.children {
-					didHit, tNear, _ := hitBoundingBox(r, v.pMin, v.pMax)
-					if didHit {
-						tPriority := tNear
-						heap.Push(&minHeap, &Item{
-							value: v,
-							t:     tPriority,
-						})
+					if v != nil {
+						didHit, tNear, _ := hitBoundingBox(r, v.pMin, v.pMax)
+						if didHit {
+							tPriority := tNear
+							heap.Push(&minHeap, &Item{
+								value: v,
+								t:     tPriority,
+							})
+						}
 					}
 				}
 			}
@@ -131,10 +134,12 @@ func traceDownBoundingVolumeHierarchyNode(r *ray, tMin float64, tMax float64, no
 		}
 		if node.children != nil {
 			for _, v := range node.children {
-				rHit, rhr := traceDownBoundingVolumeHierarchyNode(r, tMin, localTMax, v)
-				if rHit {
-					if rhr.t > tMin && rhr.t < minHitRecord.t {
-						minHitRecord = rhr
+				if v != nil {
+					rHit, rhr := traceDownBoundingVolumeHierarchyNode(r, tMin, localTMax, v)
+					if rHit {
+						if rhr.t > tMin && rhr.t < minHitRecord.t {
+							minHitRecord = rhr
+						}
 					}
 				}
 			}
@@ -146,6 +151,30 @@ func traceDownBoundingVolumeHierarchyNode(r *ray, tMin float64, tMax float64, no
 // recomputes the bounds for all objects in the BVH, from bottom up
 func (bvh boundingVolumeHierarchy) recomputeBounds() {
 	recomputeNodeBounds(&bvh.root)
+	destroyUselessNodes(&bvh.root)
+}
+
+func (bvh boundingVolumeHierarchy) printNodes() {
+	printNode(0, &bvh.root)
+}
+
+func printNode(depth int, node *boundingVolumeHierarchyNode) {
+	s := ""
+	for i := 0; i < depth; i++ {
+		s += "  "
+	}
+	shapeStr := ""
+	if node.shape != nil {
+		shapeStr = (*node.shape).description()
+	}
+	fmt.Printf("%10v: %s %v %v %v\n", node.nodeId, s, node.pMin, node.pMax, shapeStr)
+	if node.children != nil {
+		for _, v := range node.children {
+			if v != nil {
+				printNode(depth+1, v)
+			}
+		}
+	}
 }
 
 func recomputeNodeBounds(node *boundingVolumeHierarchyNode) (pMin r3.Vec, pMax r3.Vec) {
@@ -169,7 +198,20 @@ func recomputeNodeBounds(node *boundingVolumeHierarchyNode) (pMin r3.Vec, pMax r
 
 	node.pMin = boundsLow
 	node.pMax = boundsHigh
-	return node.pMin, node.pMax
+	return boundsLow, boundsHigh
+}
+
+func destroyUselessNodes(node *boundingVolumeHierarchyNode) {
+	if node.children != nil {
+		for i, v := range node.children {
+			if v.pMin.X == math.MaxFloat64 && v.pMin.Y == math.MaxFloat64 && v.pMin.Z == math.MaxFloat64 &&
+				v.pMax.X == float64(math.MinInt64) && v.pMax.Y == float64(math.MinInt64) && v.pMax.Z == float64(math.MinInt64) {
+				node.children[i] = nil
+			} else {
+				destroyUselessNodes(v)
+			}
+		}
+	}
 }
 
 func addToBVH(
@@ -303,6 +345,14 @@ func splitBvhQuadrant(lowestBounds *r3.Vec, highestBounds *r3.Vec, nodeCounter *
 
 // determines whether the ray hits the bounding box
 func hitBoundingBox(r *ray, pMin r3.Vec, pMax r3.Vec) (hit bool, tNear float64, tFar float64) {
+	// first check, am i inside the bounding box?
+	if r.p.X >= pMin.X && r.p.Y >= pMin.Y && r.p.Z >= pMin.Z &&
+		r.p.X <= pMax.X && r.p.Y <= pMax.Y && r.p.Z <= pMax.Z {
+
+		return true, 0, 0
+	}
+
+	// second check, do ray-box intersection check
 	invDirection := r3.Vec{
 		X: 1 / r.normalizedDirection.X,
 		Y: 1 / r.normalizedDirection.Y,

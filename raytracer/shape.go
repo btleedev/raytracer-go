@@ -1,8 +1,10 @@
 package raytracer
 
 import (
+	"fmt"
 	"gonum.org/v1/gonum/spatial/r3"
 	"math"
+	"reflect"
 )
 
 type hitRecord struct {
@@ -20,6 +22,8 @@ type Shape interface {
 	rotate(rv r3.Vec)
 	computeSquareBounds() (lowest r3.Vec, highest r3.Vec)
 	centroid() r3.Vec
+
+	description() string
 }
 
 type Sphere struct {
@@ -84,6 +88,16 @@ func (s Sphere) computeSquareBounds() (lowest r3.Vec, highest r3.Vec) {
 
 func (s Sphere) centroid() r3.Vec {
 	return s.Center
+}
+
+func (s Sphere) description() string {
+	return fmt.Sprintf(
+		"%s - Center: %v, Radius %f, Material: %s",
+		reflect.TypeOf(s),
+		s.Center,
+		s.Radius,
+		reflect.TypeOf(s.Mat),
+	)
 }
 
 func (tr TrianglePlane) hit(r *ray, tMin float64, tMax float64) hitRecord {
@@ -179,6 +193,17 @@ func (tr TrianglePlane) computeSquareBounds() (lowest r3.Vec, highest r3.Vec) {
 
 func (tr TrianglePlane) centroid() r3.Vec {
 	return r3.Scale(1/3.0, r3.Add(tr.PointA, r3.Add(tr.PointB, tr.PointC)))
+}
+
+func (tr TrianglePlane) description() string {
+	return fmt.Sprintf(
+		"%s - Point A: %v, Point B: %v, Point C: %v, Material: %s",
+		reflect.TypeOf(tr),
+		tr.PointA,
+		tr.PointB,
+		tr.PointC,
+		reflect.TypeOf(tr.Mat),
+	)
 }
 
 func rotatePoint(point r3.Vec, rv r3.Vec) r3.Vec {
