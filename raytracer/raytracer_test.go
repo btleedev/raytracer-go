@@ -21,12 +21,13 @@ func TestRegression(t *testing.T) {
 	fmt.Println()
 	fmt.Printf("Djikstras algorithm render time: %v\n", imgDjikstrasDuration.String())
 	fmt.Printf("DepthFirstSearch algorithm render time: %v\n", imgDfsDuration.String())
+	fmt.Println()
 
-	fmt.Printf("Comparing image rendered by Djikstras algorithm to expected image")
+	fmt.Println("Comparing image rendered by Djikstras algorithm to expected image")
 	compareImages(t, imgDjikstras, exp)
-	fmt.Printf("Comparing image rendered by DepthFirstSearch algorithm to expected image")
+	fmt.Println("Comparing image rendered by DepthFirstSearch algorithm to expected image")
 	compareImages(t, imgDfs, exp)
-	fmt.Printf("Comparing image rendered by Djikstras algorithm to image rendered by DepthFirstSearch algorithm")
+	fmt.Println("Comparing image rendered by Djikstras algorithm to image rendered by DepthFirstSearch algorithm")
 	compareImages(t, imgDjikstras, imgDfs)
 }
 
