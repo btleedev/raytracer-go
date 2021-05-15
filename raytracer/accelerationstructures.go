@@ -61,7 +61,6 @@ func NewBoundingVolumeHierarchy(shapes *[]Shape) *boundingVolumeHierarchy {
 	bvh.recomputeBounds()
 
 	fmt.Printf("Finished building BoundingVolumeHierarchy\n")
-	bvh.printNodes()
 	return &bvh
 }
 
