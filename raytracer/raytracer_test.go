@@ -7,14 +7,32 @@ import (
 	"io"
 	"os"
 	"testing"
+	"time"
 )
 
 // simple regression that contains all shapes, materials, and lights and compares result image to an expected one
 func TestRegression(t *testing.T) {
 	is, sc, exp := exampleRegression640x380(t)
-	img := GenerateImage(is, sc)
-	width := img.Rect.Max.X - img.Rect.Min.X
-	height := img.Rect.Max.Y - img.Rect.Min.Y
+	is.BvhTraversalAlgorithm = DepthFirstSearch
+	imgDfs, imgDfsDuration := renderImage(is, sc)
+	is.BvhTraversalAlgorithm = Dijkstra
+	imgDjikstras, imgDjikstrasDuration := renderImage(is, sc)
+
+	fmt.Println()
+	fmt.Printf("Djikstras algorithm render time: %v\n", imgDjikstrasDuration.String())
+	fmt.Printf("DepthFirstSearch algorithm render time: %v\n", imgDfsDuration.String())
+
+	fmt.Printf("Comparing image rendered by Djikstras algorithm to expected image")
+	compareImages(t, imgDjikstras, exp)
+	fmt.Printf("Comparing image rendered by DepthFirstSearch algorithm to expected image")
+	compareImages(t, imgDfs, exp)
+	fmt.Printf("Comparing image rendered by Djikstras algorithm to image rendered by DepthFirstSearch algorithm")
+	compareImages(t, imgDjikstras, imgDfs)
+}
+
+func compareImages(t *testing.T, img *image.RGBA, exp *image.RGBA) {
+	width := exp.Rect.Max.X - exp.Rect.Min.X
+	height := exp.Rect.Max.Y - exp.Rect.Min.Y
 	// there are some random logic (eg anti-aliasing, di-electric material)
 	// anti-aliasing should hopefully eliminate randomness, but we need to add an acceptable delta
 	antiAliasingDelta := uint32(20 * 257)
@@ -29,8 +47,8 @@ func TestRegression(t *testing.T) {
 	}
 
 	differentPixels := 0
-	for i := img.Rect.Min.X; i <= img.Rect.Max.X; i++ {
-		for j := img.Rect.Min.Y; j <= img.Rect.Max.Y; j++ {
+	for i := exp.Rect.Min.X; i <= exp.Rect.Max.X; i++ {
+		for j := exp.Rect.Min.Y; j <= exp.Rect.Max.Y; j++ {
 			imgRgba := img.At(i, j)
 			expRgba := exp.At(i, j)
 			ir, ig, ib, ia := imgRgba.RGBA()
@@ -59,6 +77,13 @@ func TestRegression(t *testing.T) {
 			100.0*float64(maximumDifferentPixelsAllowed)/float64(width*height),
 		)
 	}
+	fmt.Println()
+}
+
+func renderImage(imageSpec ImageSpec, scene Scene) (i *image.RGBA, d time.Duration) {
+	startTime := time.Now()
+	img := GenerateImage(imageSpec, scene)
+	return img, time.Since(startTime)
 }
 
 func exampleRegression640x380(t *testing.T) (is ImageSpec, sc Scene, exp *image.RGBA) {
@@ -77,7 +102,6 @@ func exampleRegression640x380(t *testing.T) (is ImageSpec, sc Scene, exp *image.
 	return imageSpec, scene, expectedImage
 }
 
-// Get the bi-dimensional pixel array
 func loadRGBAImage(file io.Reader) (*image.RGBA, error) {
 	img, _, err := image.Decode(file)
 

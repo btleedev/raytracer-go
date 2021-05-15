@@ -79,15 +79,15 @@ open ./out.png
             Center: r3.Vec{ X: 0, Y: centerPiecesRadius, Z: 0 },
             Radius: centerPiecesRadius,
             Mat: raytracer.PhongBlinn{
-                SpecHardness:  1,
-                SpecularColor: r3.Vec{ X: 1, Y: 1, Z: 1 },
-                Color:         r3.Vec{ X: 1, Y: 1, Z: 1 },
+                SpecHardness:      1,
+                SpecularColorFrac: r3.Vec{ X: 1, Y: 1, Z: 1 },
+                ColorFrac:         r3.Vec{ X: 1, Y: 1, Z: 1 },
             },
         },
         &raytracer.Sphere{
             Center: r3.Vec{ X: -2 * centerPiecesRadius, Y: centerPiecesRadius, Z: 0 },
             Radius: centerPiecesRadius,
-            Mat: Metal{
+            Mat: raytracer.Metal{
                 Albedo: r3.Vec{ X: 1.0, Y: 1.0, Z: 1.0},
                 Fuzz:   0,
             },
@@ -100,9 +100,9 @@ open ./out.png
             PointC:      r3.Vec{ X: floorRadius, Y: 0, Z: -floorRadius },
             SingleSided: true,
             Mat: raytracer.PhongBlinn{
-                Color:         r3.Vec{ X: 0, Y: 0, Z: 0 },
-                SpecularColor: r3.Vec{ X: 1, Y: 1, Z: 1 },
-                SpecHardness:  1,
+                ColorFrac:         r3.Vec{ X: 0, Y: 0, Z: 0 },
+                SpecularColorFrac: r3.Vec{ X: 1, Y: 1, Z: 1 },
+                SpecHardness:      1,
             },
         },
         &raytracer.TrianglePlane{
@@ -111,12 +111,12 @@ open ./out.png
             PointC:      r3.Vec{ X: -floorRadius, Y: 0, Z: floorRadius },
             SingleSided: true,
             Mat: raytracer.PhongBlinn{
-                Color:         r3.Vec{ X: 0, Y: 0, Z: 0 },
-                SpecularColor: r3.Vec{ X: 1, Y: 1, Z: 1 },
-                SpecHardness:  1,
+                ColorFrac:         r3.Vec{ X: 0, Y: 0, Z: 0 },
+                SpecularColorFrac: r3.Vec{ X: 1, Y: 1, Z: 1 },
+                SpecHardness:      1,
             },
         },
-        
+
         // back mirror
         &raytracer.TrianglePlane{
             PointA:      r3.Vec{ X: backMirrorRadius, Y: backMirrorRadius, Z: backMirrorRadius },
@@ -124,7 +124,7 @@ open ./out.png
             PointC:      r3.Vec{ X: -backMirrorRadius, Y: backMirrorRadius, Z: backMirrorRadius },
             SingleSided: true,
             Mat: raytracer.Standard{
-                Color: r3.Vec{ X: 150 / 255.0, Y: 111 / 255.0, Z: 51 / 255.0 },
+                ColorFrac: r3.Vec{ X: 150 / 255.0, Y: 111 / 255.0, Z: 51 / 255.0 },
             },
         },
         &raytracer.TrianglePlane{
@@ -133,7 +133,7 @@ open ./out.png
             PointC:      r3.Vec{ X: backMirrorRadius, Y: 0, Z: backMirrorRadius },
             SingleSided: true,
             Mat: raytracer.Standard{
-                Color: r3.Vec{ X: 150 / 255.0, Y: 111 / 255.0, Z: 51 / 255.0 },
+                ColorFrac: r3.Vec{ X: 150 / 255.0, Y: 111 / 255.0, Z: 51 / 255.0 },
             },
         },
         &raytracer.TrianglePlane{
@@ -208,6 +208,7 @@ open ./out.png
         RayTracingMaxDepth:              16,
         SoftShadowMonteCarloRepetitions: 16,
         WorkerCount:                     16,
+        BvhTraversalAlgorithm:           raytracer.Dijkstra,
     }
     scene := raytracer.Scene{
         CameraLookFrom:                  cameraLookFrom,

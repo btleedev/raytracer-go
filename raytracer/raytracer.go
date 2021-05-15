@@ -12,6 +12,13 @@ import (
 const bvhCentroidJitterFactor = 0.0000000001
 const softShadowMonteCarloMaxLengthDeviation = 0.25
 
+type BoundingVolumeHierarchyTraversalAlgorithm int
+
+const (
+	Dijkstra = iota
+	DepthFirstSearch
+)
+
 type ImageSpec struct {
 	Width                           int
 	Height                          int
@@ -19,6 +26,7 @@ type ImageSpec struct {
 	RayTracingMaxDepth              int
 	SoftShadowMonteCarloRepetitions int
 	WorkerCount                     int
+	BvhTraversalAlgorithm           BoundingVolumeHierarchyTraversalAlgorithm
 }
 
 type Scene struct {
@@ -96,13 +104,14 @@ func GenerateImage(imageSpec ImageSpec, scene Scene) *image.RGBA {
 }
 
 func computePixel(id int, is *ImageSpec, camera *camera, bvh *boundingVolumeHierarchy, lights *[]Light, jobs <-chan raytraceJob, results chan<- raytraceResult) {
+	var traceFunction = bvh.getTraceFunction(is.BvhTraversalAlgorithm)
 	for job := range jobs {
 		pixelColor := r3.Vec{}
 		for s := 0; s < is.AntiAliasingFactor; s++ {
 			u := (float64(job.i) + rand.Float64()) / float64(is.Width)
 			v := (float64(job.j) + rand.Float64()) / float64(is.Height)
 			ray := camera.getRay(u, v)
-			pixelColor = r3.Add(pixelColor, color(is, &ray, bvh, lights, 0))
+			pixelColor = r3.Add(pixelColor, color(is, &ray, bvh, traceFunction, lights, 0))
 		}
 		pixelColor = r3.Scale(1.0/float64(is.AntiAliasingFactor), pixelColor)
 		pixelColor = r3.Vec{
@@ -120,13 +129,20 @@ func computePixel(id int, is *ImageSpec, camera *camera, bvh *boundingVolumeHier
 	}
 }
 
-func color(is *ImageSpec, r *ray, bvh *boundingVolumeHierarchy, lights *[]Light, depth int) r3.Vec {
-	var hit, minHitRecord = bvh.trace(r, 0.0)
+func color(
+	is *ImageSpec,
+	r *ray,
+	bvh *boundingVolumeHierarchy,
+	traceFunction func(r *ray, tMin float64) (hit bool, record *hitRecord),
+	lights *[]Light,
+	depth int,
+) r3.Vec {
+	var hit, minHitRecord = traceFunction(r, 0.0)
 	if hit {
 		if depth < is.RayTracingMaxDepth {
-			shouldTrace, attenuation, scattered, terminalColor := minHitRecord.material.scatter(is, r, minHitRecord, bvh, lights)
+			shouldTrace, attenuation, scattered, terminalColor := minHitRecord.material.scatter(is, r, minHitRecord, traceFunction, lights)
 			if shouldTrace {
-				recColor := color(is, &scattered, bvh, lights, depth+1)
+				recColor := color(is, &scattered, bvh, traceFunction, lights, depth+1)
 				return r3.Vec{
 					X: attenuation.X * recColor.X,
 					Y: attenuation.Y * recColor.Y,

@@ -11,7 +11,7 @@ type Light interface {
 	getColorFrac() r3.Vec
 	getLightIntensity() float64
 	getSpecularLightIntensity() float64
-	isPointVisible(point *r3.Vec, bvh *boundingVolumeHierarchy, monteCarloVariance *r3.Vec) bool
+	isPointVisible(point *r3.Vec, traceFunction func(r *ray, tMin float64) (hit bool, record *hitRecord), monteCarloVariance *r3.Vec) bool
 }
 
 type AmbientLight struct {
@@ -55,7 +55,7 @@ func (a AmbientLight) getSpecularLightIntensity() float64 {
 	return 0
 }
 
-func (a AmbientLight) isPointVisible(point *r3.Vec, bvh *boundingVolumeHierarchy, monteCarloVariance *r3.Vec) bool {
+func (a AmbientLight) isPointVisible(point *r3.Vec, traceFunction func(r *ray, tMin float64) (hit bool, record *hitRecord), monteCarloVariance *r3.Vec) bool {
 	return true
 }
 
@@ -79,9 +79,9 @@ func (p PointLight) getSpecularLightIntensity() float64 {
 	return p.SpecularLightIntensity
 }
 
-func (p PointLight) isPointVisible(point *r3.Vec, bvh *boundingVolumeHierarchy, monteCarloVariance *r3.Vec) bool {
+func (p PointLight) isPointVisible(point *r3.Vec, traceFunction func(r *ray, tMin float64) (hit bool, record *hitRecord), monteCarloVariance *r3.Vec) bool {
 	shiftedPosition := r3.Add(p.Position, *monteCarloVariance)
-	return doesReachLight(point, &shiftedPosition, bvh)
+	return doesReachLight(point, &shiftedPosition, traceFunction)
 }
 
 func (s SpotLight) hasPosition() bool {
@@ -104,9 +104,9 @@ func (s SpotLight) getSpecularLightIntensity() float64 {
 	return s.SpecularLightIntensity
 }
 
-func (s SpotLight) isPointVisible(point *r3.Vec, bvh *boundingVolumeHierarchy, monteCarloVariance *r3.Vec) bool {
+func (s SpotLight) isPointVisible(point *r3.Vec, traceFunction func(r *ray, tMin float64) (hit bool, record *hitRecord), monteCarloVariance *r3.Vec) bool {
 	shiftedPosition := r3.Add(s.Position, *monteCarloVariance)
-	reachesLight := doesReachLight(point, &shiftedPosition, bvh)
+	reachesLight := doesReachLight(point, &shiftedPosition, traceFunction)
 
 	// get angle between light direction vector and vector of light to point
 	lightDirection := r3.Unit(s.Direction)
@@ -123,14 +123,14 @@ func angleBetweenVectors(a, b *r3.Vec) float64 {
 	return angleRadians * 180 / math.Pi
 }
 
-func doesReachLight(origin *r3.Vec, lightPosition *r3.Vec, bvh *boundingVolumeHierarchy) bool {
+func doesReachLight(origin *r3.Vec, lightPosition *r3.Vec, traceFunction func(r *ray, tMin float64) (hit bool, record *hitRecord)) bool {
 	lightDirection := r3.Sub(*lightPosition, *origin)
 	unitLightDirection := r3.Unit(lightDirection)
 	r := ray{
 		p:                   *origin,
 		normalizedDirection: unitLightDirection,
 	}
-	hit, hitRecord := bvh.trace(
+	hit, hitRecord := traceFunction(
 		&r,
 		0.01, // don't let the shadow ray hit the same object
 	)

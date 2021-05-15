@@ -157,6 +157,7 @@ func ExampleRegression(width, height int) (is ImageSpec, sc Scene) {
 		RayTracingMaxDepth:              16,
 		SoftShadowMonteCarloRepetitions: 16,
 		WorkerCount:                     16,
+		BvhTraversalAlgorithm:           Dijkstra,
 	}
 	scene := Scene{
 		CameraLookFrom:   cameraLookFrom,

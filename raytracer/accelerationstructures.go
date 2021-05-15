@@ -64,6 +64,16 @@ func NewBoundingVolumeHierarchy(shapes *[]Shape) *boundingVolumeHierarchy {
 	return &bvh
 }
 
+func (bvh boundingVolumeHierarchy) getTraceFunction(bvhExploreAlgorithm BoundingVolumeHierarchyTraversalAlgorithm) func(r *ray, tMin float64) (hit bool, record *hitRecord) {
+	if bvhExploreAlgorithm == Dijkstra {
+		return bvh.trace
+	} else if bvhExploreAlgorithm == DepthFirstSearch {
+		return bvh.traceRecursively
+	} else {
+		panic(fmt.Sprintf("No trace algorithm found for %d", bvhExploreAlgorithm))
+	}
+}
+
 func (bvh boundingVolumeHierarchy) traceRecursively(r *ray, tMin float64) (hit bool, record *hitRecord) {
 	return traceDownBoundingVolumeHierarchyNode(r, tMin, math.MaxFloat64, &bvh.root)
 }
