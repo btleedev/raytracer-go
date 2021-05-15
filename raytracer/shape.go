@@ -15,11 +15,12 @@ type hitRecord struct {
 }
 
 type Shape interface {
-	hit(r *ray, tMin float64, tMax float64) hitRecord
-	translate(tv r3.Vec)
-	scale(c float64)
 	// rotation vector is in degrees
-	rotate(rv r3.Vec)
+	Rotate(rv r3.Vec)
+	Scale(c float64)
+	Translate(tv r3.Vec)
+
+	hit(r *ray, tMin float64, tMax float64) hitRecord
 	computeSquareBounds() (lowest r3.Vec, highest r3.Vec)
 	centroid() r3.Vec
 
@@ -71,15 +72,15 @@ func (s Sphere) hit(r *ray, tMin float64, tMax float64) hitRecord {
 	}
 }
 
-func (s *Sphere) translate(tv r3.Vec) {
+func (s *Sphere) Translate(tv r3.Vec) {
 	s.Center = r3.Add(tv, s.Center)
 }
 
-func (s *Sphere) scale(c float64) {
+func (s *Sphere) Scale(c float64) {
 	s.Radius *= c
 }
 
-func (s *Sphere) rotate(rv r3.Vec) {
+func (s *Sphere) Rotate(rv r3.Vec) {
 }
 
 func (s Sphere) computeSquareBounds() (lowest r3.Vec, highest r3.Vec) {
@@ -147,19 +148,19 @@ func (tr TrianglePlane) hit(r *ray, tMin float64, tMax float64) hitRecord {
 	}
 }
 
-func (t *TrianglePlane) translate(tv r3.Vec) {
+func (t *TrianglePlane) Translate(tv r3.Vec) {
 	t.PointA = r3.Add(tv, t.PointA)
 	t.PointB = r3.Add(tv, t.PointB)
 	t.PointC = r3.Add(tv, t.PointC)
 }
 
-func (t *TrianglePlane) scale(c float64) {
+func (t *TrianglePlane) Scale(c float64) {
 	t.PointA = r3.Scale(c, t.PointA)
 	t.PointB = r3.Scale(c, t.PointB)
 	t.PointC = r3.Scale(c, t.PointC)
 }
 
-func (t *TrianglePlane) rotate(rv r3.Vec) {
+func (t *TrianglePlane) Rotate(rv r3.Vec) {
 	t.PointA = rotatePoint(t.PointA, rv)
 	t.PointB = rotatePoint(t.PointB, rv)
 	t.PointC = rotatePoint(t.PointC, rv)
