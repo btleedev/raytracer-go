@@ -28,9 +28,9 @@ func ExampleRegression(width, height int) (is ImageSpec, sc Scene) {
 			Center: r3.Vec{X: 0, Y: centerPiecesRadius, Z: 0},
 			Radius: centerPiecesRadius,
 			Mat: PhongBlinn{
-				SpecHardness:  1,
-				SpecularColor: r3.Vec{X: 1, Y: 1, Z: 1},
-				Color:         r3.Vec{X: 1, Y: 1, Z: 1},
+				SpecHardness:      1,
+				SpecularColorFrac: r3.Vec{X: 1, Y: 1, Z: 1},
+				ColorFrac:         r3.Vec{X: 1, Y: 1, Z: 1},
 			},
 		},
 		&Sphere{
@@ -49,9 +49,9 @@ func ExampleRegression(width, height int) (is ImageSpec, sc Scene) {
 			PointC:      r3.Vec{X: floorRadius, Y: 0, Z: -floorRadius},
 			SingleSided: true,
 			Mat: PhongBlinn{
-				Color:         r3.Vec{X: 0, Y: 0, Z: 0},
-				SpecularColor: r3.Vec{X: 1, Y: 1, Z: 1},
-				SpecHardness:  1,
+				ColorFrac:         r3.Vec{X: 0, Y: 0, Z: 0},
+				SpecularColorFrac: r3.Vec{X: 1, Y: 1, Z: 1},
+				SpecHardness:      1,
 			},
 		},
 		&TrianglePlane{
@@ -60,9 +60,9 @@ func ExampleRegression(width, height int) (is ImageSpec, sc Scene) {
 			PointC:      r3.Vec{X: -floorRadius, Y: 0, Z: floorRadius},
 			SingleSided: true,
 			Mat: PhongBlinn{
-				Color:         r3.Vec{X: 0, Y: 0, Z: 0},
-				SpecularColor: r3.Vec{X: 1, Y: 1, Z: 1},
-				SpecHardness:  1,
+				ColorFrac:         r3.Vec{X: 0, Y: 0, Z: 0},
+				SpecularColorFrac: r3.Vec{X: 1, Y: 1, Z: 1},
+				SpecHardness:      1,
 			},
 		},
 
@@ -73,7 +73,7 @@ func ExampleRegression(width, height int) (is ImageSpec, sc Scene) {
 			PointC:      r3.Vec{X: -backMirrorRadius, Y: backMirrorRadius, Z: backMirrorRadius},
 			SingleSided: true,
 			Mat: Standard{
-				Color: r3.Vec{X: 150 / 255.0, Y: 111 / 255.0, Z: 51 / 255.0},
+				ColorFrac: r3.Vec{X: 150 / 255.0, Y: 111 / 255.0, Z: 51 / 255.0},
 			},
 		},
 		&TrianglePlane{
@@ -82,7 +82,7 @@ func ExampleRegression(width, height int) (is ImageSpec, sc Scene) {
 			PointC:      r3.Vec{X: backMirrorRadius, Y: 0, Z: backMirrorRadius},
 			SingleSided: true,
 			Mat: Standard{
-				Color: r3.Vec{X: 150 / 255.0, Y: 111 / 255.0, Z: 51 / 255.0},
+				ColorFrac: r3.Vec{X: 150 / 255.0, Y: 111 / 255.0, Z: 51 / 255.0},
 			},
 		},
 		&TrianglePlane{

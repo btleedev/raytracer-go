@@ -11,7 +11,7 @@ type Material interface {
 }
 
 type Standard struct {
-	Color r3.Vec
+	ColorFrac r3.Vec
 }
 
 type Metal struct {
@@ -24,13 +24,13 @@ type Dielectric struct {
 }
 
 type PhongBlinn struct {
-	Color         r3.Vec
-	SpecularColor r3.Vec
-	SpecHardness  float64
+	ColorFrac         r3.Vec
+	SpecularColorFrac r3.Vec
+	SpecHardness      float64
 }
 
 func (d Standard) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]Light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
-	return false, r3.Vec{}, ray{p: hitRecord.p, normalizedDirection: r3.Vec{}}, d.Color
+	return false, r3.Vec{}, ray{p: hitRecord.p, normalizedDirection: r3.Vec{}}, d.ColorFrac
 }
 
 func (m Metal) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *boundingVolumeHierarchy, lights *[]Light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
@@ -84,14 +84,14 @@ func (p PhongBlinn) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *bo
 					lightColor := light.getColorFrac()
 					diffuseColor := r3.Scale(
 						intensity*light.getLightIntensity()/lightDistanceSqrd,
-						r3.Unit(r3.Vec{X: p.Color.X + lightColor.X, Y: p.Color.Y + lightColor.Y, Z: p.Color.Z + lightColor.Z}),
+						r3.Unit(r3.Vec{X: p.ColorFrac.X + lightColor.X, Y: p.ColorFrac.Y + lightColor.Y, Z: p.ColorFrac.Z + lightColor.Z}),
 					)
 
 					// specular Color uses specular Color of material
 					h := r3.Unit(r3.Add(lightDirection, r.normalizedDirection))
 					nDotH := r3.Dot(hitRecord.normal, h)
 					specIntensity := math.Pow(saturate(nDotH), p.SpecHardness)
-					specularColor := r3.Scale(specIntensity*light.getSpecularLightIntensity()/lightDistanceSqrd, p.SpecularColor)
+					specularColor := r3.Scale(specIntensity*light.getSpecularLightIntensity()/lightDistanceSqrd, p.SpecularColorFrac)
 
 					combinedColor := r3.Vec{
 						X: math.Min(1.0, diffuseColor.X+specularColor.X),
@@ -103,7 +103,7 @@ func (p PhongBlinn) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, bvh *bo
 			}
 		} else {
 			// ambient light merges lighting Color and material Color
-			c = r3.Add(c, r3.Scale(light.getLightIntensity(), r3.Unit(r3.Add(p.Color, light.getColorFrac()))))
+			c = r3.Add(c, r3.Scale(light.getLightIntensity(), r3.Unit(r3.Add(p.ColorFrac, light.getColorFrac()))))
 		}
 	}
 	c.X = math.Min(1.0, c.X)
