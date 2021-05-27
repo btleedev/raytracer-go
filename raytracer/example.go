@@ -128,12 +128,13 @@ func ExampleRegression(width, height int) (is ImageSpec, sc Scene) {
 				Y: 5 * centerPiecesRadius,
 				Z: 3 * centerPiecesRadius,
 			},
-			Direction: r3.Vec{
-				X: -6,
-				Y: -5,
-				Z: -3,
+			LookAt: r3.Vec{
+				X: 0,
+				Y: 0,
+				Z: 0,
 			},
-			Angle: 30,
+			Angle:                       30,
+			InverseSquareLawDecayFactor: 1.0,
 		},
 		PointLight{
 			ColorFrac: r3.Vec{
@@ -148,6 +149,7 @@ func ExampleRegression(width, height int) (is ImageSpec, sc Scene) {
 				Y: 5 * centerPiecesRadius,
 				Z: -3 * centerPiecesRadius,
 			},
+			InverseSquareLawDecayFactor: 1.0,
 		},
 	}
 	imageSpec := ImageSpec{

@@ -179,12 +179,13 @@ open ./out.png
                 Y: 5 * centerPiecesRadius,
                 Z: 3 * centerPiecesRadius,
             },
-            Direction: r3.Vec{
-                X: -6,
-                Y: -5,
-                Z: -3,
+            LookAt: r3.Vec{ 
+                X: 0, 
+                Y: 0, 
+                Z: 0,
             },
             Angle: 30,
+            InverseSquareLawDecayFactor: 1.0,
         },
         raytracer.PointLight{
             ColorFrac: r3.Vec{
@@ -199,6 +200,7 @@ open ./out.png
                 Y: 5 * centerPiecesRadius,
                 Z: -3 * centerPiecesRadius,
             },
+            InverseSquareLawDecayFactor: 1.0,
         },
     }
     imageSpec := raytracer.ImageSpec{

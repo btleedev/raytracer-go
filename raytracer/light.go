@@ -11,6 +11,7 @@ type Light interface {
 	getColorFrac() r3.Vec
 	getLightIntensity() float64
 	getSpecularLightIntensity() float64
+	getInverseSquareLawDecayFactor() float64
 	isPointVisible(point *r3.Vec, traceFunction func(r *ray, tMin float64) (hit bool, record *hitRecord), monteCarloVariance *r3.Vec) bool
 }
 
@@ -20,19 +21,21 @@ type AmbientLight struct {
 }
 
 type PointLight struct {
-	ColorFrac              r3.Vec
-	Position               r3.Vec
-	LightIntensity         float64
-	SpecularLightIntensity float64
+	ColorFrac                   r3.Vec
+	Position                    r3.Vec
+	LightIntensity              float64
+	SpecularLightIntensity      float64
+	InverseSquareLawDecayFactor float64
 }
 
 type SpotLight struct {
-	ColorFrac              r3.Vec
-	Position               r3.Vec
-	LightIntensity         float64
-	SpecularLightIntensity float64
-	Direction              r3.Vec
-	Angle                  float64 // specified in degrees
+	ColorFrac                   r3.Vec
+	Position                    r3.Vec
+	LightIntensity              float64
+	SpecularLightIntensity      float64
+	LookAt                      r3.Vec
+	Angle                       float64 // specified in degrees
+	InverseSquareLawDecayFactor float64
 }
 
 func (a AmbientLight) hasPosition() bool {
@@ -52,6 +55,10 @@ func (a AmbientLight) getLightIntensity() float64 {
 }
 
 func (a AmbientLight) getSpecularLightIntensity() float64 {
+	return 0
+}
+
+func (a AmbientLight) getInverseSquareLawDecayFactor() float64 {
 	return 0
 }
 
@@ -79,6 +86,10 @@ func (p PointLight) getSpecularLightIntensity() float64 {
 	return p.SpecularLightIntensity
 }
 
+func (p PointLight) getInverseSquareLawDecayFactor() float64 {
+	return p.InverseSquareLawDecayFactor
+}
+
 func (p PointLight) isPointVisible(point *r3.Vec, traceFunction func(r *ray, tMin float64) (hit bool, record *hitRecord), monteCarloVariance *r3.Vec) bool {
 	shiftedPosition := r3.Add(p.Position, *monteCarloVariance)
 	return doesReachLight(point, &shiftedPosition, traceFunction)
@@ -104,12 +115,16 @@ func (s SpotLight) getSpecularLightIntensity() float64 {
 	return s.SpecularLightIntensity
 }
 
+func (s SpotLight) getInverseSquareLawDecayFactor() float64 {
+	return s.InverseSquareLawDecayFactor
+}
+
 func (s SpotLight) isPointVisible(point *r3.Vec, traceFunction func(r *ray, tMin float64) (hit bool, record *hitRecord), monteCarloVariance *r3.Vec) bool {
 	shiftedPosition := r3.Add(s.Position, *monteCarloVariance)
 	reachesLight := doesReachLight(point, &shiftedPosition, traceFunction)
 
 	// get angle between light direction vector and vector of light to point
-	lightDirection := r3.Unit(s.Direction)
+	lightDirection := r3.Unit(r3.Sub(s.LookAt, s.Position))
 	lightPositionToShape := r3.Unit(r3.Sub(*point, shiftedPosition))
 	angle := angleBetweenVectors(&lightDirection, &lightPositionToShape)
 	return reachesLight && angle <= s.Angle

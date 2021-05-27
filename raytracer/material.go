@@ -77,13 +77,17 @@ func (p PhongBlinn) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, traceFu
 					lightToPoint := r3.Sub(lightPosition, hitPoint)
 					lightDirection := r3.Unit(lightToPoint)
 					lightDistanceSqrd := lightToPoint.X*lightToPoint.X + lightToPoint.Y*lightToPoint.Y + lightToPoint.Z*lightToPoint.Z
+					lightDecay := light.getInverseSquareLawDecayFactor() * lightDistanceSqrd
+					if lightDecay <= 1 {
+						lightDecay = 1
+					}
 
 					// diffuse Color merges lighting Color and material Color
 					nDotL := r3.Dot(hitRecord.normal, lightDirection)
 					intensity := saturate(nDotL)
 					lightColor := light.getColorFrac()
 					diffuseColor := r3.Scale(
-						intensity*light.getLightIntensity()/lightDistanceSqrd,
+						intensity*light.getLightIntensity()/lightDecay,
 						r3.Unit(r3.Vec{X: p.ColorFrac.X + lightColor.X, Y: p.ColorFrac.Y + lightColor.Y, Z: p.ColorFrac.Z + lightColor.Z}),
 					)
 
@@ -91,7 +95,7 @@ func (p PhongBlinn) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, traceFu
 					h := r3.Unit(r3.Add(lightDirection, r.normalizedDirection))
 					nDotH := r3.Dot(hitRecord.normal, h)
 					specIntensity := math.Pow(saturate(nDotH), p.SpecHardness)
-					specularColor := r3.Scale(specIntensity*light.getSpecularLightIntensity()/lightDistanceSqrd, p.SpecularColorFrac)
+					specularColor := r3.Scale(specIntensity*light.getSpecularLightIntensity()/lightDecay, p.SpecularColorFrac)
 
 					combinedColor := r3.Vec{
 						X: math.Min(1.0, diffuseColor.X+specularColor.X),
