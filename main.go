@@ -11,7 +11,7 @@ func main() {
 	// defer profile.Start().Stop()
 
 	imageLocation := "out.png"
-	imageSpec, scene := raytracer.ExampleRegression(640, 380)
+	imageSpec, scene := raytracer.ExampleRegression(640, 380, "./")
 	myImage := raytracer.GenerateImage(imageSpec, scene)
 
 	outputFile, err := os.Create(imageLocation)
