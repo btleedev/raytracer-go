@@ -11,6 +11,9 @@ import (
 
 const bvhCentroidJitterFactor = 0.0000000001
 const softShadowMonteCarloMaxLengthDeviation = 0.25
+const backgroundColorFracR = 0.0
+const backgroundColorFracG = 0.0
+const backgroundColorFracB = 0.0
 
 type BoundingVolumeHierarchyTraversalAlgorithm int
 
@@ -87,10 +90,10 @@ func GenerateImage(imageSpec ImageSpec, scene Scene) *image.RGBA {
 	for j := imageSpec.Height - 1; j >= 0; j-- {
 		for i := 0; i < imageSpec.Width; i++ {
 			result := <-results
-			myImage.Pix[result.pixelIdx+0] = uint8(result.pixelColorFrac.X * 255.99) // 1st pixel red
-			myImage.Pix[result.pixelIdx+1] = uint8(result.pixelColorFrac.Y * 255.99) // 1st pixel green
-			myImage.Pix[result.pixelIdx+2] = uint8(result.pixelColorFrac.Z * 255.99) // 1st pixel blue
-			myImage.Pix[result.pixelIdx+3] = 255                                     // 1st pixel alpha
+			myImage.Pix[result.pixelIdx+0] = uint8(math.Min(255, result.pixelColorFrac.X*255.99)) // 1st pixel red
+			myImage.Pix[result.pixelIdx+1] = uint8(math.Min(255, result.pixelColorFrac.Y*255.99)) // 1st pixel green
+			myImage.Pix[result.pixelIdx+2] = uint8(math.Min(255, result.pixelColorFrac.Z*255.99)) // 1st pixel blue
+			myImage.Pix[result.pixelIdx+3] = 255                                                  // 1st pixel alpha
 
 			count++
 			if count%1000 == 0 {
@@ -155,9 +158,5 @@ func color(
 	}
 
 	// background Color
-	return r3.Vec{
-		X: 0 / 255.0,
-		Y: 0 / 255.0,
-		Z: 0 / 255.0,
-	}
+	return r3.Vec{X: backgroundColorFracR, Y: backgroundColorFracG, Z: backgroundColorFracB}
 }

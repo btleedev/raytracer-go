@@ -1,22 +1,60 @@
 package raytracer
 
-import "gonum.org/v1/gonum/spatial/r3"
+import (
+	"fmt"
+	"gonum.org/v1/gonum/spatial/r3"
+	"os"
+)
 
-func ExampleRegression(width, height int) (is ImageSpec, sc Scene) {
+func ExampleRegression(width, height int, repoBaseDir string) (is ImageSpec, sc Scene) {
 	floorRadius := 100.0
 	centerPiecesRadius := 2.0
 	backMirrorRadius := 4 * centerPiecesRadius
 	backMirrorBorder := centerPiecesRadius / 2
 
-	cameraLookFrom := r3.Vec{X: 0, Y: 3 * centerPiecesRadius, Z: -8}
-	cameraLookAt := r3.Vec{X: 0, Y: 1.5 * centerPiecesRadius, Z: 0}
+	cameraLookFrom := r3.Vec{X: 0, Y: 3 * centerPiecesRadius, Z: -5}
+	cameraLookAt := r3.Vec{X: 0, Y: 2 * centerPiecesRadius, Z: 0}
 	cameraUp := r3.Vec{X: 0, Y: 1, Z: 0}
 	cameraFocusPoint := cameraLookAt
 	cameraAperature := 0.015
 	cameraFovDegrees := 60.0
 
+	texturePlane := CheckersTexture{
+		ColorFrac1:     r3.Vec{X: 0, Y: 1, Z: 0},
+		ColorFrac2:     r3.Vec{X: 0, Y: 0, Z: 1},
+		CheckersWidth:  100.0,
+		CheckersHeight: 100.0,
+	}
+	textureLeftSphere := CheckersTexture{
+		ColorFrac1:     r3.Vec{X: 0, Y: 0, Z: 0},
+		ColorFrac2:     r3.Vec{X: 1, Y: 1, Z: 1},
+		CheckersWidth:  10.0,
+		CheckersHeight: 10.0,
+	}
+	textureRightSphereFileName := fmt.Sprintf("%s/%s", repoBaseDir, "samples_textures/Tiles075_1K_Color.jpg")
+	textureRightSphereFile, err := os.Open(textureRightSphereFileName)
+	if err != nil {
+		panic(err)
+	}
+	defer textureRightSphereFile.Close()
+
+	textureRightSphereTexture, err := LoadRGBAImage(textureRightSphereFile)
+	if err != nil {
+		panic(err)
+	}
+	textureRightSphere := ImageTexture{
+		Img: textureRightSphereTexture,
+	}
+
 	shapes := []Shape{
 		// centerpieces
+		&Sphere{
+			Center: r3.Vec{X: 4 * centerPiecesRadius, Y: centerPiecesRadius, Z: 0},
+			Radius: centerPiecesRadius,
+			Mat: Standard{
+				Texture: textureLeftSphere,
+			},
+		},
 		&Sphere{
 			Center: r3.Vec{X: 2 * centerPiecesRadius, Y: centerPiecesRadius, Z: 0},
 			Radius: centerPiecesRadius,
@@ -41,6 +79,15 @@ func ExampleRegression(width, height int) (is ImageSpec, sc Scene) {
 				Fuzz:   0,
 			},
 		},
+		&Sphere{
+			Center: r3.Vec{X: -4 * centerPiecesRadius, Y: centerPiecesRadius, Z: 0},
+			Radius: centerPiecesRadius,
+			Mat: PhongBlinn{
+				SpecHardness:      1,
+				SpecularColorFrac: r3.Vec{X: 1, Y: 1, Z: 1},
+				Texture:           textureRightSphere,
+			},
+		},
 
 		// floor
 		&TrianglePlane{
@@ -52,6 +99,7 @@ func ExampleRegression(width, height int) (is ImageSpec, sc Scene) {
 				ColorFrac:         r3.Vec{X: 0, Y: 0, Z: 0},
 				SpecularColorFrac: r3.Vec{X: 1, Y: 1, Z: 1},
 				SpecHardness:      1,
+				Texture:           texturePlane,
 			},
 		},
 		&TrianglePlane{
@@ -63,6 +111,7 @@ func ExampleRegression(width, height int) (is ImageSpec, sc Scene) {
 				ColorFrac:         r3.Vec{X: 0, Y: 0, Z: 0},
 				SpecularColorFrac: r3.Vec{X: 1, Y: 1, Z: 1},
 				SpecHardness:      1,
+				Texture:           texturePlane,
 			},
 		},
 
@@ -117,16 +166,16 @@ func ExampleRegression(width, height int) (is ImageSpec, sc Scene) {
 		},
 		SpotLight{
 			ColorFrac: r3.Vec{
-				X: 0 / 255.0,
-				Y: 255 / 255.0,
-				Z: 0 / 255.0,
+				X: 171 / 255.0,
+				Y: 137 / 255.0,
+				Z: 255 / 255.0,
 			},
 			LightIntensity:         100,
 			SpecularLightIntensity: 100,
 			Position: r3.Vec{
 				X: 6 * centerPiecesRadius,
 				Y: 5 * centerPiecesRadius,
-				Z: 3 * centerPiecesRadius,
+				Z: -3 * centerPiecesRadius,
 			},
 			LookAt: r3.Vec{
 				X: 0,
@@ -138,18 +187,18 @@ func ExampleRegression(width, height int) (is ImageSpec, sc Scene) {
 		},
 		PointLight{
 			ColorFrac: r3.Vec{
-				X: 0 / 255.0,
-				Y: 0 / 255.0,
-				Z: 255 / 255.0,
+				X: 67 / 255.0,
+				Y: 163 / 255.0,
+				Z: 241 / 255.0,
 			},
 			LightIntensity:         100,
-			SpecularLightIntensity: 100,
+			SpecularLightIntensity: 10,
 			Position: r3.Vec{
-				X: -6 * centerPiecesRadius,
-				Y: 5 * centerPiecesRadius,
-				Z: -3 * centerPiecesRadius,
+				X: -4 * centerPiecesRadius,
+				Y: centerPiecesRadius,
+				Z: 3 * centerPiecesRadius,
 			},
-			InverseSquareLawDecayFactor: 1.0,
+			InverseSquareLawDecayFactor: 0.5,
 		},
 	}
 	imageSpec := ImageSpec{

@@ -12,6 +12,7 @@ type Material interface {
 
 type Standard struct {
 	ColorFrac r3.Vec
+	Texture   texture
 }
 
 type Metal struct {
@@ -27,10 +28,16 @@ type PhongBlinn struct {
 	ColorFrac         r3.Vec
 	SpecularColorFrac r3.Vec
 	SpecHardness      float64
+	Texture           texture
 }
 
 func (d Standard) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, traceFunction func(r *ray, tMin float64) (hit bool, record *hitRecord), lights *[]Light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
-	return false, r3.Vec{}, ray{p: hitRecord.p, normalizedDirection: r3.Vec{}}, d.ColorFrac
+	col := d.ColorFrac
+	if d.Texture != nil {
+		u, v := hitRecord.shape.textureMap(hitRecord.p, hitRecord.normal)
+		col = d.Texture.getColorFrac(u, v)
+	}
+	return false, r3.Vec{}, ray{p: hitRecord.p, normalizedDirection: r3.Vec{}}, col
 }
 
 func (m Metal) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, traceFunction func(r *ray, tMin float64) (hit bool, record *hitRecord), lights *[]Light) (shouldTrace bool, attenuation r3.Vec, scattered ray, color r3.Vec) {
@@ -83,19 +90,27 @@ func (p PhongBlinn) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, traceFu
 					}
 
 					// diffuse Color merges lighting Color and material Color
+					materialColorFrac := p.ColorFrac
+					if p.Texture != nil {
+						u, v := hitRecord.shape.textureMap(hitPoint, hitRecord.normal)
+						materialColorFrac = p.Texture.getColorFrac(u, v)
+					}
 					nDotL := r3.Dot(hitRecord.normal, lightDirection)
 					intensity := saturate(nDotL)
 					lightColor := light.getColorFrac()
 					diffuseColor := r3.Scale(
 						intensity*light.getLightIntensity()/lightDecay,
-						r3.Unit(r3.Vec{X: p.ColorFrac.X + lightColor.X, Y: p.ColorFrac.Y + lightColor.Y, Z: p.ColorFrac.Z + lightColor.Z}),
+						r3.Vec{X: materialColorFrac.X * lightColor.X, Y: materialColorFrac.Y * lightColor.Y, Z: materialColorFrac.Z * lightColor.Z},
 					)
 
 					// specular Color uses specular Color of material
 					h := r3.Unit(r3.Add(lightDirection, r.normalizedDirection))
 					nDotH := r3.Dot(hitRecord.normal, h)
 					specIntensity := math.Pow(saturate(nDotH), p.SpecHardness)
-					specularColor := r3.Scale(specIntensity*light.getSpecularLightIntensity()/lightDecay, p.SpecularColorFrac)
+					specularColor := r3.Scale(
+						specIntensity*light.getSpecularLightIntensity()/lightDecay,
+						r3.Vec{X: p.SpecularColorFrac.X * lightColor.X, Y: p.SpecularColorFrac.Y * lightColor.Y, Z: p.SpecularColorFrac.Z * lightColor.Z},
+					)
 
 					combinedColor := r3.Vec{
 						X: math.Min(1.0, diffuseColor.X+specularColor.X),
@@ -107,7 +122,7 @@ func (p PhongBlinn) scatter(is *ImageSpec, r *ray, hitRecord *hitRecord, traceFu
 			}
 		} else {
 			// ambient light merges lighting Color and material Color
-			c = r3.Add(c, r3.Scale(light.getLightIntensity(), r3.Unit(r3.Add(p.ColorFrac, light.getColorFrac()))))
+			c = r3.Add(c, r3.Scale(light.getLightIntensity(), light.getColorFrac()))
 		}
 	}
 	c.X = math.Min(1.0, c.X)

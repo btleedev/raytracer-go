@@ -3,8 +3,6 @@ package raytracer
 import (
 	"fmt"
 	"image"
-	_ "image/png"
-	"io"
 	"os"
 	"testing"
 	"time"
@@ -88,7 +86,7 @@ func renderImage(imageSpec ImageSpec, scene Scene) (i *image.RGBA, d time.Durati
 }
 
 func exampleRegression640x380(t *testing.T) (is ImageSpec, sc Scene, exp *image.RGBA) {
-	imageSpec, scene := ExampleRegression(640, 380)
+	imageSpec, scene := ExampleRegression(640, 380, "../")
 	fileName := "../samples_images/code_example.png"
 	file, err := os.Open(fileName)
 	if err != nil {
@@ -96,35 +94,11 @@ func exampleRegression640x380(t *testing.T) (is ImageSpec, sc Scene, exp *image.
 	}
 	defer file.Close()
 
-	expectedImage, err := loadRGBAImage(file)
+	expectedImage, err := LoadRGBAImage(file)
 	if err != nil {
 		t.Error(err)
 	}
 	return imageSpec, scene, expectedImage
-}
-
-func loadRGBAImage(file io.Reader) (*image.RGBA, error) {
-	img, _, err := image.Decode(file)
-
-	if err != nil {
-		return nil, err
-	}
-
-	bounds := img.Bounds()
-	width, height := bounds.Max.X, bounds.Max.Y
-	loadedImg := image.NewRGBA(image.Rect(0, 0, width, height))
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			pixelId := ((y * width) + x) * 4
-			r, g, b, a := img.At(x, y).RGBA()
-			loadedImg.Pix[pixelId+0] = uint8(r)
-			loadedImg.Pix[pixelId+1] = uint8(g)
-			loadedImg.Pix[pixelId+2] = uint8(b)
-			loadedImg.Pix[pixelId+3] = uint8(a)
-		}
-	}
-
-	return loadedImg, nil
 }
 
 func diffu32(i, j uint32) uint32 {

@@ -11,6 +11,7 @@ type hitRecord struct {
 	t        float64
 	p        r3.Vec
 	normal   r3.Vec
+	shape    Shape
 	material Material
 }
 
@@ -23,6 +24,8 @@ type Shape interface {
 	hit(r *ray, tMin float64, tMax float64) hitRecord
 	computeSquareBounds() (lowest r3.Vec, highest r3.Vec)
 	centroid() r3.Vec
+	// u, v must be between [0, 1]
+	textureMap(point r3.Vec, normal r3.Vec) (u, v float64)
 
 	description() string
 }
@@ -54,6 +57,7 @@ func (s Sphere) hit(r *ray, tMin float64, tMax float64) hitRecord {
 				t:        firstPoint,
 				p:        r.PointAtT(firstPoint),
 				normal:   r3.Scale(1/s.Radius, r3.Sub(r.PointAtT(firstPoint), s.Center)),
+				shape:    &s,
 				material: s.Mat,
 			}
 		}
@@ -63,6 +67,7 @@ func (s Sphere) hit(r *ray, tMin float64, tMax float64) hitRecord {
 				t:        secondPoint,
 				p:        r.PointAtT(secondPoint),
 				normal:   r3.Scale(1/s.Radius, r3.Sub(r.PointAtT(secondPoint), s.Center)),
+				shape:    &s,
 				material: s.Mat,
 			}
 		}
@@ -89,6 +94,14 @@ func (s Sphere) computeSquareBounds() (lowest r3.Vec, highest r3.Vec) {
 
 func (s Sphere) centroid() r3.Vec {
 	return s.Center
+}
+
+// https://people.cs.clemson.edu/~dhouse/courses/405/notes/texture-maps.pdf
+func (s Sphere) textureMap(point r3.Vec, normal r3.Vec) (u, v float64) {
+	pointWhenSphereAtOrigin := r3.Sub(point, s.Center)
+	theta := math.Atan2(-1*pointWhenSphereAtOrigin.Z, pointWhenSphereAtOrigin.X)
+	phi := math.Acos(-1 * pointWhenSphereAtOrigin.Y / s.Radius)
+	return (theta + math.Pi) / (2 * math.Pi), phi / math.Pi
 }
 
 func (s Sphere) description() string {
@@ -144,6 +157,7 @@ func (tr TrianglePlane) hit(r *ray, tMin float64, tMax float64) hitRecord {
 		t:        t,
 		p:        r.PointAtT(t),
 		normal:   normal,
+		shape:    &tr,
 		material: tr.Mat,
 	}
 }
@@ -194,6 +208,22 @@ func (tr TrianglePlane) computeSquareBounds() (lowest r3.Vec, highest r3.Vec) {
 
 func (tr TrianglePlane) centroid() r3.Vec {
 	return r3.Scale(1/3.0, r3.Add(tr.PointA, r3.Add(tr.PointB, tr.PointC)))
+}
+
+func (tr TrianglePlane) textureMap(point r3.Vec, normal r3.Vec) (u, v float64) {
+	// Compute barycentric coordinates (u, v, w) for
+	// point p with respect to triangle (a, b, c)
+	v0 := r3.Sub(tr.PointB, tr.PointA)
+	v1 := r3.Sub(tr.PointC, tr.PointA)
+	v2 := r3.Sub(point, tr.PointA)
+	d00 := r3.Dot(v0, v0)
+	d01 := r3.Dot(v0, v1)
+	d11 := r3.Dot(v1, v1)
+	d20 := r3.Dot(v2, v0)
+	d21 := r3.Dot(v2, v1)
+	denom := d00*d11 - d01*d01
+	w := (d00*d21 - d01*d20) / denom
+	return 1.0 - v - w, (d11*d20 - d01*d21) / denom
 }
 
 func (tr TrianglePlane) description() string {
