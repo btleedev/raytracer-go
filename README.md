@@ -1,7 +1,6 @@
 Ray tracer written in golang.
 
-![bunny](samples_images/bunny.png "Stanford Bunny")
-![lyman](samples_images/lyman.png "Lyman from Animal Crossing")
+![Stanford Dragon](samples_images/stanford_dragon.png "Stanford Dragon")
 
 # Usage
 
@@ -51,8 +50,8 @@ All textures are from [ambientcg.com](https://ambientcg.com/) - LICENSE: https:/
 
 # STL Models used in samples
 
-* [LOW POLY STANFORD BUNNY](https://cults3d.com/en/3d-model/art/low-poly-stanford-bunny) - Author: Istareyn - LICENSE: https://creativecommons.org/licenses/by-nc/3.0/ - no changes to STL file were made
-* [LYMAN FROM ANIMAL CROSSING](https://cults3d.com/en/3d-model/art/lyman-from-animal-crossing) - Author: Philin_theBlank - LICENSE: https://creativecommons.org/licenses/by-nc/3.0/ - no changes to STL file were made
+* [The Stanford 3D Scanning Repository
+  ](http://graphics.stanford.edu/data/3Dscanrep/) - Credit: Stanford Computer Graphics Laboratory
 
 # Code Example
 
