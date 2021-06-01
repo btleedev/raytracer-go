@@ -1,7 +1,6 @@
 package raytracer
 
 import (
-	"fmt"
 	"gonum.org/v1/gonum/spatial/r3"
 	"image"
 	_ "image/jpeg"
@@ -56,7 +55,6 @@ func (i ImageTexture) getColorFrac(u, v float64) r3.Vec {
 func LoadRGBAImage(file io.Reader) (*image.RGBA, error) {
 	img, _, err := image.Decode(file)
 
-	fmt.Printf("%v\n", err)
 	if err != nil {
 		return nil, err
 	}
